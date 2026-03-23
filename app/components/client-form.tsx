@@ -184,7 +184,7 @@ export default function ClientForm({
         <h2 className="text-lg font-semibold">Basic Info</h2>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Client Name</label>
+          <label className="mb-1 block text-sm font-medium">Business Name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}

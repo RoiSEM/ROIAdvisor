@@ -58,7 +58,7 @@ export default async function ClientsPage() {
 
       <details className="group relative mt-6 rounded-xl border border-slate-200 shadow-sm transition hover:shadow-md">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium marker:content-none">
-          <span>Add / edit client</span>
+          <span>Add Website</span>
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 transition group-open:rotate-180">
             <ChevronDown size={18} strokeWidth={2.25} aria-hidden="true" />
           </span>

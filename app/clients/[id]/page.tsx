@@ -264,7 +264,7 @@ export default async function ClientDetailPage({
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 pr-44 marker:content-none md:px-6 md:py-5 md:pr-56">
                           <div className="min-w-0 flex-1 pr-2 md:pr-4">
                             <h3 className="text-xl font-semibold tracking-tight md:text-2xl">
-                              Traffic Report: {report.month || "No month set"}
+                              Conversion Report: {report.month || "No month set"}
                             </h3>
 
                             {report.notes && (
@@ -309,7 +309,7 @@ export default async function ClientDetailPage({
                           <div className="rounded border p-4">
                           <div className="flex items-center justify-between gap-3">
                             <h1 className="font-semibold">
-                              {hasAiSummary ? "Traffic Report Summary" : "Summary & Insights"}
+                              {hasAiSummary ? "Conversion Report Summary" : "Summary & Insights"}
                             </h1>
                            
                           </div>
