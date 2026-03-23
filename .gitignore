@@ -43,3 +43,4 @@ yarn-error.log*
 next-env.d.ts
 
 app/lib/analytics/ga-service-account.json
+roi-analytics-490813-0f47c11ee707.json

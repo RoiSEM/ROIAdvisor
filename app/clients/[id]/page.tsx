@@ -217,7 +217,7 @@ export default async function ClientDetailPage({
     <main className="mx-auto max-w-4xl p-8 w-full">
       <div className="flex items-center justify-between gap-4">
         <Link href="/clients" className="text-sm underline">
-          Back to Clients
+          Back to Websites
         </Link>
         <SignOutButton />
       </div>

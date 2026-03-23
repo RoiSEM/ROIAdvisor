@@ -71,7 +71,7 @@ export default async function ClientsPage() {
 
       <div className="mt-8 space-y-3">
         {clients.length === 0 && (
-          <p className="text-gray-500">No clients yet. Add your first one 👆</p>
+          <p className="text-gray-500">No websites yet. Add your first one 👆</p>
         )}
 
         {clients.map(

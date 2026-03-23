@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase-server";
-import { getGA4Report } from "@/lib/analytics/ga4";
+import { GoogleAnalyticsConfigError, getGA4Report } from "@/lib/analytics/ga4";
 
 export async function POST(
   _req: Request,
@@ -60,6 +60,14 @@ export async function POST(
     return Response.json({ success: true, traffic, pageViews, activeUsers, bounceRate, engagementRate, conversions });
   } catch (error) {
     console.error("Sync analytics error:", error);
+
+    if (error instanceof GoogleAnalyticsConfigError) {
+      return Response.json(
+        { error: error.message },
+        { status: 400 },
+      );
+    }
+
     return Response.json(
       { error: "Failed to sync analytics" },
       { status: 500 },
