@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type ClientFormProps = {
   clientId?: string;
   initialName?: string;
   initialWebsite?: string;
   initialEmail?: string;
+  initialPortalUserId?: string;
   initialGa4PropertyId?: string;
   initialPrimaryGoal?: string;
   initialMonthlyGoal?: number | null;
@@ -20,6 +21,7 @@ type ClientFormProps = {
   initialMarketingChannels?: string[] | null;
   initialRunningAds?: boolean | null;
   initialClientNotes?: string;
+  isAdmin?: boolean;
 };
 
 const CONVERSION_OPTIONS = [
@@ -42,11 +44,14 @@ const CHANNEL_OPTIONS = [
   "Other",
 ];
 
+
+
 export default function ClientForm({
   clientId,
   initialName = "",
   initialWebsite = "",
   initialEmail = "",
+  initialPortalUserId = "",
   initialGa4PropertyId = "",
   initialPrimaryGoal = "",
   initialMonthlyGoal = null,
@@ -59,6 +64,7 @@ export default function ClientForm({
   initialMarketingChannels = [],
   initialRunningAds = null,
   initialClientNotes = "",
+  isAdmin = false,
 }: ClientFormProps) {
   const router = useRouter();
   const isEditMode = Boolean(clientId);
@@ -66,6 +72,7 @@ export default function ClientForm({
   const [name, setName] = useState(initialName);
   const [website, setWebsite] = useState(initialWebsite);
   const [email, setEmail] = useState(initialEmail);
+  const [portalUserId, setPortalUserId] = useState(initialPortalUserId);
   const [ga4PropertyId, setGa4PropertyId] = useState(initialGa4PropertyId);
   const [primaryGoal, setPrimaryGoal] = useState(initialPrimaryGoal);
   const [monthlyGoal, setMonthlyGoal] = useState(
@@ -94,6 +101,19 @@ export default function ClientForm({
   const [clientNotes, setClientNotes] = useState(initialClientNotes);
   const [loading, setLoading] = useState(false);
 
+  const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/users")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setUsers(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
   function toggleArrayValue(
     value: string,
     current: string[],
@@ -121,6 +141,7 @@ export default function ClientForm({
             name,
             website,
             email,
+            user_id: portalUserId || null,
             ga4_property_id: ga4PropertyId,
             primary_goal: primaryGoal || null,
             monthly_goal: monthlyGoal ? Number(monthlyGoal) : null,
@@ -150,6 +171,7 @@ export default function ClientForm({
         setName("");
         setWebsite("");
         setEmail("");
+        setPortalUserId("");
         setGa4PropertyId("");
         setPrimaryGoal("");
         setMonthlyGoal("");
@@ -184,7 +206,9 @@ export default function ClientForm({
         <h2 className="text-lg font-semibold">Basic Info</h2>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Business Name</label>
+          <label className="mb-1 block text-sm font-medium">
+            Business Name
+          </label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -214,6 +238,28 @@ export default function ClientForm({
             placeholder="contact@example.com"
           />
         </div>
+        {isAdmin && (
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Assigned User
+            </label>
+            <select
+              value={portalUserId}
+              onChange={(e) => setPortalUserId(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Unassigned</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.email}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Optional. Assign this website to an existing user account.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-sm font-medium">
@@ -241,9 +287,7 @@ export default function ClientForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">
-            Primary Goal
-          </label>
+          <label className="mb-1 block text-sm font-medium">Primary Goal</label>
           <select
             value={primaryGoal}
             onChange={(e) => setPrimaryGoal(e.target.value)}
@@ -436,7 +480,7 @@ export default function ClientForm({
         disabled={loading}
         className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
       >
-        {loading ? "Saving..." : isEditMode ? "Save Changes" : "Add Client"}
+        {loading ? "Saving..." : isEditMode ? "Save Changes" : "Add Project"}
       </button>
     </form>
   );

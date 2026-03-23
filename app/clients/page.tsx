@@ -1,4 +1,3 @@
-
 import ClientForm from "@/components/client-form";
 import SignOutButton from "@/components/sign-out-button";
 import Link from "next/link";
@@ -32,42 +31,64 @@ async function getClients() {
     redirect("/login");
   }
 
-  const { data, error } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  // console.log("USER EMAIL:", user.email);
+
+  const ADMIN_EMAILS = ["george@roisem.com"];
+  const isAdmin = ADMIN_EMAILS.includes(user.email || "");
+
+  let query = supabase.from("clients").select("*");
+
+  if (!isAdmin) {
+    query = query.eq("user_id", user.id);
+  }
+
+  const { data, error } = await query.order("created_at", {
+    ascending: false,
+  });
 
   if (error) {
     console.error("Supabase getClients error:", error);
     throw new Error("Failed to load clients");
   }
 
-  return data ?? [];
+  return {
+    clients: data ?? [],
+    user,
+    isAdmin,
+  };
 }
 
 export default async function ClientsPage() {
-  const clients = await getClients();
+  const { clients, user, isAdmin } = await getClients();
 
   return (
     <main className="mx-auto max-w-4xl w-full p-8">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">Websites</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold">Websites</h1>
+          {isAdmin && (
+            <span className="text-xs px-2 py-1 rounded bg-black text-white">
+              Admin
+            </span>
+          )}
+        </div>
         <SignOutButton />
       </div>
 
-      <details className="group relative mt-6 rounded-xl border border-slate-200 shadow-sm transition hover:shadow-md">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium marker:content-none">
-          <span>Add Website</span>
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 transition group-open:rotate-180">
-            <ChevronDown size={18} strokeWidth={2.25} aria-hidden="true" />
-          </span>
-        </summary>
+      {isAdmin && (
+        <details className="group relative mt-6 rounded-xl border border-slate-200 shadow-sm transition hover:shadow-md">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium marker:content-none">
+            <span>Add Website</span>
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 transition group-open:rotate-180">
+              <ChevronDown size={18} strokeWidth={2.25} aria-hidden="true" />
+            </span>
+          </summary>
 
-        <div className="border-t border-slate-100 px-4 py-4">
-          <ClientForm />
-        </div>
-      </details>
+          <div className="border-t border-slate-100 px-4 py-4">
+            <ClientForm isAdmin={isAdmin} />
+          </div>
+        </details>
+      )}
 
       <div className="mt-8 space-y-3">
         {clients.length === 0 && (

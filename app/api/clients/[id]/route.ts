@@ -29,10 +29,19 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const ADMIN_EMAILS = ["george@roisem.com"];
+    const isAdmin = ADMIN_EMAILS.includes(user?.email || "");
+
     const {
       name,
       website,
       email,
+      user_id,
       ga4_property_id,
       primary_goal,
       monthly_goal,
@@ -53,6 +62,7 @@ export async function PATCH(
         name,
         website,
         email,
+        user_id: isAdmin ? user_id : undefined,
         ga4_property_id,
         primary_goal,
         monthly_goal,

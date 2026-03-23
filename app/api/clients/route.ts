@@ -14,11 +14,19 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const ADMIN_EMAILS = ["george@roisem.com"];
+  const isAdmin = ADMIN_EMAILS.includes(user?.email || "");
+
   try {
     const {
       name,
       website,
       email,
+      user_id,
       ga4_property_id,
       primary_goal,
       monthly_goal,
@@ -40,6 +48,7 @@ export async function POST(req: Request) {
           name,
           website,
           email,
+          user_id: isAdmin ? user_id : user?.id || null,
           ga4_property_id,
           primary_goal,
           monthly_goal,
