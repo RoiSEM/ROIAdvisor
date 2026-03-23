@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 
 const valueProps = [
@@ -64,12 +65,10 @@ export default function HomePage() {
             Convert by WhachaWant
           </p>
           <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            Turn your website traffic into customers.
+            AI conversion reporting for websites that need more leads.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Most websites do not have a traffic problem. They have a conversion
-            problem. Convert shows what is working, what is broken, and what to
-            fix next.
+            Convert helps business owners and agencies understand why their website is not converting. Track traffic, diagnose conversion blockers, and get clear actions to improve leads and revenue.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -77,7 +76,7 @@ export default function HomePage() {
               href="/login"
               className="inline-flex items-center justify-center rounded-lg bg-black px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
-              Start free
+              Start trial
             </Link>
             <Link
               href="/clients"
@@ -111,9 +110,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <p className="mt-4 text-base leading-7 text-slate-700">
-                  Primary blocker: form functionality issues are preventing users
-                  from submitting leads. Fix this first before investing more in
-                  traffic.
+                  Primary blocker: form functionality issues are preventing users from submitting leads. Fix this first before investing more in traffic.
                 </p>
               </div>
 
@@ -159,7 +156,7 @@ export default function HomePage() {
               Pricing
             </p>
             <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-              Start small. Upgrade when you need more insight.
+              Simple pricing for conversion-focused reporting.
             </h2>
             <p className="mt-4 text-base leading-8 text-slate-600">
               Start with a low-cost trial to validate the insights, then upgrade into deeper reporting and white-label delivery as your needs grow.
@@ -220,11 +217,11 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-6xl px-6 py-16 text-center sm:px-8 sm:py-20">
         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Know exactly why your website is not converting.
+          Find out why your website is not converting.
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
-          Start with a free report, then use Convert to track what matters,
-          diagnose the real problem, and improve results.
+          Start with a $1 trial, then use Convert to track what matters,
+          uncover conversion blockers, and improve results.
         </p>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
