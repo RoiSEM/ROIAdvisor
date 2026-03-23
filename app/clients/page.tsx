@@ -1,110 +1,98 @@
-import { createClient } from "@/lib/supabase";
+
+import ClientForm from "@/components/client-form";
+import SignOutButton from "@/components/sign-out-button";
+import Link from "next/link";
+import { Settings, ChevronDown } from "lucide-react";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-export default async function ProjectsPage() {
-  const supabase = await createClient();
+async function getClients() {
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {},
+      },
+    },
+  );
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (userError || !user) {
     redirect("/login");
   }
 
-  const { data: projects } = await supabase
-    .from("clients") // keep DB the same for now
+  const { data, error } = await supabase
+    .from("clients")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
+  if (error) {
+    console.error("Supabase getClients error:", error);
+    throw new Error("Failed to load clients");
+  }
+
+  return data ?? [];
+}
+
+export default async function ClientsPage() {
+  const clients = await getClients();
+
   return (
-    <div className="min-h-screen bg-slate-100">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b bg-white px-6 py-4">
-        <h1 className="text-xl font-bold">Convert</h1>
-
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-500">{user.email}</span>
-
-          <form action="/auth/signout" method="post">
-            <button className="rounded-lg border px-4 py-2 text-sm hover:bg-slate-100">
-              Sign out
-            </button>
-          </form>
-        </div>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 border-r bg-white p-6">
-          <nav className="space-y-3 text-sm">
-            <p className="text-xs uppercase text-slate-400">Navigation</p>
-
-            <a className="block font-semibold">Projects</a>
-            <a className="block text-slate-600 hover:text-black">Reports</a>
-            <a className="block text-slate-600 hover:text-black">Settings</a>
-          </nav>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-8 max-w-6xl">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Projects</h2>
-
-            <button className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90">
-              + Add Project
-            </button>
-          </div>
-
-          {/* Projects List */}
-          <div className="mt-6 space-y-4">
-            {!projects?.length && (
-              <div className="rounded-xl border bg-white p-10 text-center">
-                <h3 className="text-lg font-semibold">No projects yet</h3>
-                <p className="mt-2 text-sm text-slate-500">
-                  Add your first website to start generating reports.
-                </p>
-              </div>
-            )}
-
-            {projects?.map((project) => (
-              <div
-                key={project.id}
-                className="rounded-xl border bg-white p-6 shadow-sm hover:shadow-md transition"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold">{project.name}</h3>
-                    <p className="text-sm text-slate-500">{project.url}</p>
-                  </div>
-
-                  <button className="text-slate-400 hover:text-black">
-                    ⚙️
-                  </button>
-                </div>
-
-                {/* Metrics (placeholder for now) */}
-                <div className="mt-4 flex gap-6 text-sm">
-                  <div>
-                    <p className="text-slate-400">Traffic</p>
-                    <p className="font-semibold">—</p>
-                  </div>
-
-                  <div>
-                    <p className="text-slate-400">Conversions</p>
-                    <p className="font-semibold">—</p>
-                  </div>
-
-                  <div>
-                    <p className="text-slate-400">Health</p>
-                    <p className="font-semibold text-slate-500">Pending</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </main>
+    <main className="mx-auto max-w-4xl w-full p-8">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold">Websites</h1>
+        <SignOutButton />
       </div>
-    </div>
+
+      <details className="group relative mt-6 rounded-xl border border-slate-200 shadow-sm transition hover:shadow-md">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium marker:content-none">
+          <span>Add / edit client</span>
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 transition group-open:rotate-180">
+            <ChevronDown size={18} strokeWidth={2.25} aria-hidden="true" />
+          </span>
+        </summary>
+
+        <div className="border-t border-slate-100 px-4 py-4">
+          <ClientForm />
+        </div>
+      </details>
+
+      <div className="mt-8 space-y-3">
+        {clients.length === 0 && (
+          <p className="text-gray-500">No clients yet. Add your first one 👆</p>
+        )}
+
+        {clients.map(
+          (client: { id: string; name: string; website: string | null }) => (
+            <div key={client.id} className="relative rounded border p-4 transition">
+              <Link href={`/clients/${client.id}`} className="block">
+                <h2 className="font-semibold">{client.name}</h2>
+                <p className="text-sm">{client.website || "No website"}</p>
+              </Link>
+
+              <Link
+                href={`/clients/${client.id}/edit`}
+                aria-label={`Edit ${client.name}`}
+                className="absolute right-3 top-3 transition hover:text-slate-900"
+              >
+                <Settings size={18} aria-hidden="true" />
+              </Link>
+            </div>
+          ),
+        )}
+      </div>
+    </main>
   );
 }
