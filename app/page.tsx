@@ -239,6 +239,26 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <p>Convert by WhachaWant</p>
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:justify-end">
+            <Link href="/privacy-policy" className="transition hover:text-slate-900">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="transition hover:text-slate-900">
+              Terms &amp; Conditions
+            </Link>
+            <a
+              href="mailto:george@roisem.com"
+              className="transition hover:text-slate-900"
+            >
+              george@roisem.com
+            </a>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
