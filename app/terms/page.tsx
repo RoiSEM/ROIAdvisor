@@ -92,7 +92,7 @@ export default function TermsPage() {
       title="Terms and Conditions"
       intro="These Terms and Conditions describe the rules, responsibilities, and limits that apply when you use Convert by WhachaWant."
       lastUpdated="March 24, 2026"
-      sections={[...sections]}
+      sections={sections}
     />
   );
 }

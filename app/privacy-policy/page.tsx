@@ -77,7 +77,7 @@ export default function PrivacyPolicyPage() {
       title="Privacy Policy"
       intro="This Privacy Policy explains how Convert by WhachaWant collects, uses, stores, and shares information when you access or use our website, application, and related services."
       lastUpdated="March 24, 2026"
-      sections={[...sections]}
+      sections={sections}
     />
   );
 }

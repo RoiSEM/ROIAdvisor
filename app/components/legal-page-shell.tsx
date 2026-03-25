@@ -1,10 +1,8 @@
 import Link from "next/link";
 
-// update for ready only
-
 type LegalSection = {
   title: string;
-  paragraphs: string[];
+  paragraphs: readonly string[];
 };
 
 type LegalPageShellProps = {
@@ -12,7 +10,7 @@ type LegalPageShellProps = {
   title: string;
   intro: string;
   lastUpdated: string;
-  sections: LegalSection[];
+  sections: readonly LegalSection[];
 };
 
 export default function LegalPageShell({
