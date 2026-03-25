@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+// update for ready only
+
 type LegalSection = {
   title: string;
   paragraphs: string[];
