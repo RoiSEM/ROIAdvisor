@@ -2,6 +2,8 @@ import ManageBillingButton from "@/components/manage-billing-button";
 import CheckoutButton from "@/components/checkout-button";
 import Link from "next/link";
 
+type PlanPriceKey = "trial" | "pro" | "agency";
+
 const valueProps = [
   {
     title: "See what matters",
@@ -20,7 +22,15 @@ const valueProps = [
   },
 ];
 
-const plans = [
+const plans: Array<{
+  name: string;
+  price: string;
+  description: string;
+  features: string[];
+  priceKey: PlanPriceKey;
+  cta: string;
+  featured?: boolean;
+}> = [
   {
     name: "Trial",
     price: "$1",
