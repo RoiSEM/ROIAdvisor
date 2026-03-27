@@ -1,4 +1,5 @@
-
+import ManageBillingButton from "@/components/manage-billing-button";
+import CheckoutButton from "@/components/checkout-button";
 import Link from "next/link";
 
 const valueProps = [
@@ -30,6 +31,8 @@ const plans = [
       "Limited report generation",
       "Basic health score and insights",
     ],
+    priceKey: "trial",
+    cta: "Start trial",
   },
   {
     name: "Pro",
@@ -42,6 +45,8 @@ const plans = [
       "Full AI recommendations",
     ],
     featured: true,
+    priceKey: "pro",
+    cta: "Upgrade to Pro",
   },
   {
     name: "Agency",
@@ -53,6 +58,8 @@ const plans = [
       "Client access",
       "Branded exports and PDFs",
     ],
+    priceKey: "agency",
+    cta: "Contact for Agency",
   },
 ];
 
@@ -68,7 +75,9 @@ export default function HomePage() {
             AI conversion reporting for websites that need more leads.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Convert helps business owners and agencies understand why their website is not converting. Track traffic, diagnose conversion blockers, and get clear actions to improve leads and revenue.
+            Convert helps business owners and agencies understand why their
+            website is not converting. Track traffic, diagnose conversion
+            blockers, and get clear actions to improve leads and revenue.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -110,7 +119,9 @@ export default function HomePage() {
                   </div>
                 </div>
                 <p className="mt-4 text-base leading-7 text-slate-700">
-                  Primary blocker: form functionality issues are preventing users from submitting leads. Fix this first before investing more in traffic.
+                  Primary blocker: form functionality issues are preventing
+                  users from submitting leads. Fix this first before investing
+                  more in traffic.
                 </p>
               </div>
 
@@ -137,7 +148,10 @@ export default function HomePage() {
             </p>
             <div className="mt-6 space-y-5">
               {valueProps.map((item) => (
-                <div key={item.title} className="rounded-2xl border border-slate-200 p-5">
+                <div
+                  key={item.title}
+                  className="rounded-2xl border border-slate-200 p-5"
+                >
                   <h2 className="text-lg font-semibold">{item.title}</h2>
                   <p className="mt-2 text-sm leading-7 text-slate-600">
                     {item.description}
@@ -159,7 +173,8 @@ export default function HomePage() {
               Simple pricing for conversion-focused reporting.
             </h2>
             <p className="mt-4 text-base leading-8 text-slate-600">
-              Start with a low-cost trial to validate the insights, then upgrade into deeper reporting and white-label delivery as your needs grow.
+              Start with a low-cost trial to validate the insights, then upgrade
+              into deeper reporting and white-label delivery as your needs grow.
             </p>
           </div>
 
@@ -209,6 +224,26 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-8">
+                  {plan.priceKey === "agency" ? (
+                    <a
+                      href="mailto:george@roisem.com?subject=Agency%20Plan%20Inquiry"
+                      className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition ${
+                        plan.featured
+                          ? "bg-white text-slate-950 hover:bg-slate-100"
+                          : "bg-black text-white hover:opacity-90"
+                      }`}
+                    >
+                      {plan.cta}
+                    </a>
+                  ) : (
+                    <CheckoutButton
+                      plan={plan.priceKey}
+                      label={plan.cta}
+                      featured={Boolean(plan.featured)}
+                    />
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -220,8 +255,8 @@ export default function HomePage() {
           Find out why your website is not converting.
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
-          Start with a $1 trial, then use Convert to track what matters,
-          uncover conversion blockers, and improve results.
+          Start with a $1 trial, then use Convert to track what matters, uncover
+          conversion blockers, and improve results.
         </p>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -237,6 +272,7 @@ export default function HomePage() {
           >
             View dashboard
           </Link>
+          <ManageBillingButton />
         </div>
       </section>
 
@@ -244,7 +280,10 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p>Convert by WhachaWant</p>
           <div className="flex flex-wrap items-center justify-center gap-4 sm:justify-end">
-            <Link href="/privacy-policy" className="transition hover:text-slate-900">
+            <Link
+              href="/privacy-policy"
+              className="transition hover:text-slate-900"
+            >
               Privacy Policy
             </Link>
             <Link href="/terms" className="transition hover:text-slate-900">
