@@ -80,6 +80,8 @@ export async function PATCH(
       website,
       email,
       user_id,
+      approval_status,
+      approval_notes,
       ga4_property_id,
       primary_goal,
       monthly_goal,
@@ -94,6 +96,10 @@ export async function PATCH(
       client_notes,
     } = await req.json();
 
+    const nextApprovalStatus =
+      typeof approval_status === "string" ? approval_status : undefined;
+    const isApproved = nextApprovalStatus === "approved";
+
     const { data, error } = await supabaseAdmin
       .from("clients")
       .update({
@@ -101,6 +107,15 @@ export async function PATCH(
         website,
         email,
         ...(isAdmin ? { user_id } : {}),
+        ...(isAdmin
+          ? {
+              approval_status: nextApprovalStatus,
+              approval_notes:
+                typeof approval_notes === "string" ? approval_notes : null,
+              approved_at: isApproved ? new Date().toISOString() : null,
+              approved_by_user_id: isApproved ? user.id : null,
+            }
+          : {}),
         ga4_property_id,
         primary_goal,
         monthly_goal,

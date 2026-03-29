@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   }
 
   const cookieStore = await cookies();
-  const response = NextResponse.redirect(`${origin}/clients`);
+  const response = NextResponse.redirect(`${origin}/dashboard`);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

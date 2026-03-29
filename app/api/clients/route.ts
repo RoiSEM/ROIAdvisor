@@ -1,3 +1,4 @@
+import { getBillingSnapshot } from "@/lib/billing";
 import {
   getRequestUser,
   isAdminUser,
@@ -64,6 +65,41 @@ export async function POST(req: Request) {
       client_notes,
     } = await req.json();
 
+    if (!isAdmin) {
+      const { data: billing, error: billingError } = await supabaseAdmin
+        .from("billing_accounts")
+        .select("plan, status, stripe_customer_id, stripe_subscription_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (billingError) {
+        return Response.json({ error: billingError.message }, { status: 500 });
+      }
+
+      const billingSnapshot = getBillingSnapshot(billing);
+      const websiteLimit = billingSnapshot.websiteOwnershipLimit;
+
+      if (websiteLimit !== null) {
+        const { count, error: countError } = await supabaseAdmin
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
+
+        if (countError) {
+          return Response.json({ error: countError.message }, { status: 500 });
+        }
+
+        if ((count ?? 0) >= websiteLimit) {
+          const limitMessage =
+            websiteLimit === 1
+              ? "Signed-in accounts without an active paid plan can create 1 website. Choose Starter or upgrade to add more."
+              : `Starter accounts can create up to ${websiteLimit} websites. Upgrade to Pro to add more.`;
+
+          return Response.json({ error: limitMessage }, { status: 403 });
+        }
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from("clients")
       .insert([
@@ -84,6 +120,10 @@ export async function POST(req: Request) {
           marketing_channels,
           running_ads,
           client_notes,
+          approval_status: "pending",
+          approval_notes: null,
+          approved_at: null,
+          approved_by_user_id: null,
         },
       ])
       .select()

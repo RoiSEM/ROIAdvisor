@@ -34,8 +34,8 @@ export default function LoginClient() {
             Sign in to your dashboard
           </h1>
           <p className="text-sm leading-6 text-slate-600">
-            Use your Google account to access your clients, reports, and
-            print-ready summaries.
+            Use your Google account to access your dashboard, websites,
+            reports, and print-ready summaries.
           </p>
           {error && (
             <p className="text-sm text-red-600">

@@ -1,7 +1,11 @@
 import ReportForm from "@/components/report-form";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase-server";
+import {
+  createSupabaseUserClient,
+  isAdminUser,
+  supabaseAdmin,
+} from "@/lib/supabase-server";
 import { marked } from "marked";
 import { ChevronDown } from "lucide-react";
 import RegenerateSummaryButton from "@/components/regenerate-summary-button";
@@ -10,18 +14,47 @@ import SyncAnalyticsButton from "@/components/sync-analytics-button";
 import ReportHeaderActions from "@/components/report-header-actions";
 import { buildPreviewSummary } from "@/lib/report-summary";
 import SignOutButton from "@/components/sign-out-button";
+import { redirect } from "next/navigation";
 
 async function getClient(id: string) {
-  const { data, error } = await supabase
+  const supabase = await createSupabaseUserClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    redirect("/login");
+  }
+
+  let query = supabaseAdmin
     .from("clients")
     .select("*")
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+
+  if (!isAdminUser(user)) {
+    query = query.eq("user_id", user.id);
+  }
+
+  const { data, error } = await query.single();
 
   if (error) {
     console.error("Supabase getClient error:", error);
     throw new Error("Failed to load client");
   }
+
+  return {
+    client: data,
+    isAdminView: isAdminUser(user),
+  };
+}
+
+async function getClientMetadata(id: string) {
+  const { data } = await supabaseAdmin
+    .from("clients")
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
 
   return data;
 }
@@ -34,15 +67,19 @@ export async function generateMetadata({
   const { id } = await params;
 
   try {
-    const client = await getClient(id);
+    const client = await getClientMetadata(id);
+
+    if (!client) {
+      throw new Error("Client not found");
+    }
 
     return {
       title: `${client.name} Reports`,
-      description: `Monthly SEO reports for ${client.name}.`,
+      description: `Monthly reports for ${client.name}.`,
     };
   } catch {
     return {
-      title: "Client Reports",
+      title: "Reports",
     };
   }
 }
@@ -190,7 +227,7 @@ function bulletPanelStyles(title: string) {
 }
 
 async function getReports(id: string) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("reports")
     .select("*")
     .eq("client_id", id)
@@ -210,24 +247,62 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const client = await getClient(id);
+  const { client, isAdminView } = await getClient(id);
   const reports = await getReports(id);
+  const approvalStatus = (client.approval_status || "pending").toLowerCase();
+  const isApproved = approvalStatus === "approved";
+  const backLabel = isAdminView ? "Back to Clients" : "Back to Dashboard";
 
   return (
     <main className="mx-auto max-w-4xl p-8 w-full">
       <div className="flex items-center justify-between gap-4">
-        <Link href="/clients" className="text-sm underline">
-          Back to Websites
+        <Link href="/dashboard" className="text-sm underline">
+          {backLabel}
         </Link>
         <SignOutButton />
       </div>
 
       <div className="mt-4 rounded border p-6">
-        <h1 className="text-3xl font-bold">{client.name}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-bold">{client.name}</h1>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+              isApproved
+                ? "bg-emerald-100 text-emerald-900"
+                : "bg-amber-100 text-amber-900"
+            }`}
+          >
+            {isApproved ? "Approved" : "Pending approval"}
+          </span>
+        </div>
         <p className="mt-2">{client.website || "No website"}</p>
+        {!isApproved && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <p className="font-semibold">Reports are locked until approval.</p>
+            <p className="mt-2 leading-7">
+              This website is still pending approval. Reports unlock after
+              analytics access is confirmed and an admin approves the site.
+            </p>
+            {client.approval_notes && (
+              <p className="mt-2 leading-7 text-amber-900">
+                Admin notes: {client.approval_notes}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      <ReportForm clientId={id} />
+      {isApproved ? (
+        <ReportForm clientId={id} />
+      ) : (
+        <div className="mt-8 rounded border border-slate-200 bg-slate-50 p-6">
+          <h2 className="text-2xl font-semibold">Generate report</h2>
+          <p className="mt-2 text-sm leading-7 text-slate-600">
+            Report generation becomes available once this website has been
+            approved.
+          </p>
+        </div>
+      )}
 
       <section className="mt-8">
         <h2 className="text-2xl font-semibold">Reports</h2>

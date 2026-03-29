@@ -305,10 +305,10 @@ export default async function PrintReportPage({
     <main className="print-shell mx-auto max-w-4xl  px-6 py-8 md:px-10 md:py-10">
       <div className="no-print mb-6 flex items-center justify-between border-b pb-4">
         <a
-          href={`/clients/${client?.id ?? ""}`}
+          href={`/dashboard/${client?.id ?? ""}`}
           className="text-sm underline underline-offset-4"
         >
-          ← Back to Client
+          ← Back to Dashboard
         </a>
 
         <PrintPageButton />
@@ -321,7 +321,7 @@ export default async function PrintReportPage({
               Monthly Performance Report
             </p>
             <h1 className="mt-2 text-4xl font-bold tracking-tight">
-              {client?.name || "Client Report"}
+              {client?.name || "Website Report"}
             </h1>
             <p className="mt-3 text-lg ">
               {formatReportMonth(report.month)}

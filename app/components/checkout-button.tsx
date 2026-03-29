@@ -4,7 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase-browser";
 
 type CheckoutButtonProps = {
-  plan: "trial" | "pro";
+  plan: "starter" | "pro";
   label: string;
   featured?: boolean;
   className?: string;

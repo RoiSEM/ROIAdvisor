@@ -4,6 +4,32 @@ import { ReportDatePicker } from "@/components/calendar";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+type AccountPlan = "free" | "starter" | "pro" | "agency";
+
+function planTone(plan: AccountPlan) {
+  if (plan === "free") {
+    return "text-slate-700";
+  }
+
+  if (plan === "starter") {
+    return "text-amber-600";
+  }
+
+  return "text-green-600";
+}
+
+function formatPlanLabel(plan: AccountPlan) {
+  if (plan === "free") {
+    return "Free";
+  }
+
+  if (plan === "starter") {
+    return "Starter";
+  }
+
+  return plan.toUpperCase();
+}
+
 export default function ReportForm({ clientId }: { clientId: string }) {
   const router = useRouter();
 
@@ -18,7 +44,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
     };
   }, []);
 
-  const [billingPlan, setBillingPlan] = useState<"trial" | "pro" | "agency">("trial");
+  const [billingPlan, setBillingPlan] = useState<AccountPlan>("free");
   const [canUseCustomDateRange, setCanUseCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(defaultRange);
   const [notes, setNotes] = useState("");
@@ -32,7 +58,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
       try {
         const res = await fetch("/api/billing");
         const data = (await res.json()) as {
-          plan?: "trial" | "pro" | "agency";
+          plan?: AccountPlan;
           can_use_custom_date_range?: boolean;
         };
 
@@ -153,11 +179,9 @@ export default function ReportForm({ clientId }: { clientId: string }) {
         <div className="text-sm text-slate-600">
           Current Plan:{" "}
           <span
-            className={`font-semibold ${
-              billingPlan === "trial" ? "text-amber-600" : "text-green-600"
-            }`}
+            className={`font-semibold ${planTone(billingPlan)}`}
           >
-            {billingPlan.toUpperCase()}
+            {formatPlanLabel(billingPlan)}
           </span>
         </div>
       </div>

@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import CheckoutButton from "@/components/checkout-button";
+import BillingAwarePricingCards from "@/components/billing-aware-pricing-cards";
 import ManageBillingButton from "@/components/manage-billing-button";
-import { pricingPlans } from "@/lib/pricing";
+import SiteHeaderNav from "@/components/site-header-nav";
 
-type BillingPlan = "trial" | "pro" | "agency";
+type AccountPlan = "free" | "starter" | "pro" | "agency";
+type BillingPlan = "starter" | "pro" | "agency";
 
 type BillingResponse = {
-  plan: BillingPlan;
-  raw_plan: BillingPlan;
+  plan: AccountPlan;
+  raw_plan: BillingPlan | null;
   status: string;
   can_use_custom_date_range: boolean;
   has_unlimited_reports: boolean;
@@ -19,8 +20,8 @@ type BillingResponse = {
 };
 
 const DEFAULT_BILLING: BillingResponse = {
-  plan: "trial",
-  raw_plan: "trial",
+  plan: "free",
+  raw_plan: null,
   status: "inactive",
   can_use_custom_date_range: false,
   has_unlimited_reports: false,
@@ -29,6 +30,18 @@ const DEFAULT_BILLING: BillingResponse = {
 
 function formatStatus(status: string) {
   return status.replaceAll("_", " ");
+}
+
+function formatPlanLabel(plan: AccountPlan) {
+  if (plan === "free") {
+    return "Free";
+  }
+
+  if (plan === "starter") {
+    return "Starter";
+  }
+
+  return plan;
 }
 
 export default function PricingPageClient() {
@@ -50,8 +63,8 @@ export default function PricingPageClient() {
     }
 
     const nextBilling: BillingResponse = {
-      plan: data.plan ?? "trial",
-      raw_plan: data.raw_plan ?? data.plan ?? "trial",
+      plan: data.plan ?? "free",
+      raw_plan: data.raw_plan ?? null,
       status: data.status ?? "inactive",
       can_use_custom_date_range: Boolean(data.can_use_custom_date_range),
       has_unlimited_reports: Boolean(data.has_unlimited_reports),
@@ -163,6 +176,21 @@ export default function PricingPageClient() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_45%,_#ffffff_78%)] text-slate-950">
+      <SiteHeaderNav current="pricing">
+        <Link
+          href="/"
+          className="hidden rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 sm:inline-flex"
+        >
+          Home
+        </Link>
+        <Link
+          href="/dashboard"
+          className="inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          Open dashboard
+        </Link>
+      </SiteHeaderNav>
+
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-14 sm:px-8 sm:py-20">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
@@ -185,12 +213,14 @@ export default function PricingPageClient() {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                  billing.plan === "trial"
-                    ? "bg-amber-100 text-amber-900"
-                    : "bg-emerald-100 text-emerald-900"
+                  billing.plan === "free"
+                    ? "bg-slate-200 text-slate-900"
+                    : billing.plan === "starter"
+                      ? "bg-amber-100 text-amber-900"
+                      : "bg-emerald-100 text-emerald-900"
                 }`}
               >
-                {loadingBilling ? "Loading" : billing.plan}
+                {loadingBilling ? "Loading" : formatPlanLabel(billing.plan)}
               </span>
               <span className="text-sm text-slate-500">
                 Status: {loadingBilling ? "loading" : formatStatus(billing.status)}
@@ -199,7 +229,9 @@ export default function PricingPageClient() {
             <p className="mt-4 text-sm leading-7 text-slate-600">
               {billing.can_use_custom_date_range
                 ? "Paid features are unlocked, including custom date ranges and unlimited report generation."
-                : "You are on the trial experience with the last 30 days and limited report generation."}
+                : billing.plan === "starter"
+                  ? "You are on the Starter plan with up to 10 websites, the last 30 days, and limited report generation."
+                  : "You are signed in with free access. You can set up one website and use the default 30-day report window until you choose Starter or upgrade."}
             </p>
           </div>
 
@@ -214,10 +246,10 @@ export default function PricingPageClient() {
             </ul>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
-                href="/clients"
+                href="/dashboard"
                 className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
               >
-                Open client reports
+                Open dashboard
               </Link>
               {billing.can_manage_billing && <ManageBillingButton />}
             </div>
@@ -233,112 +265,7 @@ export default function PricingPageClient() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {pricingPlans.map((plan) => {
-            const isCurrentPlan = billing.plan === plan.priceKey;
-            const showManageBilling =
-              billing.can_manage_billing &&
-              plan.priceKey !== "agency" &&
-              (isCurrentPlan ||
-                (billing.plan !== "trial" && plan.priceKey === "trial"));
-
-            return (
-              <div
-                key={plan.name}
-                className={`rounded-3xl border p-8 shadow-sm ${
-                  plan.featured
-                    ? "border-slate-950 bg-slate-950 text-white"
-                    : "border-slate-200 bg-white text-slate-950"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p
-                      className={`text-sm font-semibold uppercase tracking-[0.2em] ${
-                        plan.featured ? "text-slate-300" : "text-slate-500"
-                      }`}
-                    >
-                      {plan.name}
-                    </p>
-                    <p className="mt-4 text-4xl font-bold tracking-tight">
-                      {plan.price}
-                    </p>
-                  </div>
-                  {isCurrentPlan && (
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                        plan.featured
-                          ? "border border-white/20 bg-white/10 text-white"
-                          : "bg-slate-100 text-slate-700"
-                      }`}
-                    >
-                      Current plan
-                    </span>
-                  )}
-                </div>
-
-                <p
-                  className={`mt-5 text-sm leading-7 ${
-                    plan.featured ? "text-slate-200" : "text-slate-600"
-                  }`}
-                >
-                  {plan.description}
-                </p>
-
-                <ul className="mt-6 space-y-3 text-sm leading-7">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex gap-3">
-                      <span className="mt-2 h-2 w-2 rounded-full bg-current" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-8">
-                  {plan.priceKey === "agency" ? (
-                    <a
-                      href="mailto:george@roisem.com?subject=Agency%20Plan%20Inquiry"
-                      className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition ${
-                        plan.featured
-                          ? "bg-white text-slate-950 hover:bg-slate-100"
-                          : "bg-black text-white hover:opacity-90"
-                      }`}
-                    >
-                      {plan.cta}
-                    </a>
-                  ) : showManageBilling ? (
-                    <ManageBillingButton
-                      label={
-                        isCurrentPlan
-                          ? plan.priceKey === "trial"
-                            ? "Manage Trial"
-                            : "Manage Plan"
-                          : "Change in billing portal"
-                      }
-                      className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition ${
-                        plan.featured
-                          ? "bg-white text-slate-950 hover:bg-slate-100"
-                          : "border border-slate-300 bg-white text-slate-950 hover:bg-slate-100"
-                      }`}
-                    />
-                  ) : (
-                    <CheckoutButton
-                      plan={plan.priceKey}
-                      label={isCurrentPlan ? "Current plan" : plan.cta}
-                      featured={Boolean(plan.featured)}
-                      disabled={isCurrentPlan}
-                      className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                        plan.featured
-                          ? "bg-white text-slate-950 hover:bg-slate-100"
-                          : "bg-black text-white hover:opacity-90"
-                      }`}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <BillingAwarePricingCards variant="pricing" />
       </section>
     </main>
   );

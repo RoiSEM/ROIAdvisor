@@ -12,7 +12,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 function getPlanFromPriceId(priceId: string | null | undefined) {
   if (!priceId) return null;
 
-  if (priceId === process.env.STRIPE_PRICE_TRIAL) return "trial";
+  if (
+    priceId === process.env.STRIPE_PRICE_STARTER ||
+    priceId === process.env.STRIPE_PRICE_TRIAL
+  ) {
+    return "starter";
+  }
   if (priceId === process.env.STRIPE_PRICE_PRO) return "pro";
   if (priceId === process.env.STRIPE_PRICE_AGENCY) return "agency";
 

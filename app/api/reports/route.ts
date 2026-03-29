@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getBillingSnapshot, type BillingPlan } from "@/lib/billing";
+import { getBillingSnapshot, type AccountPlan } from "@/lib/billing";
 import {
   getRequestUser,
   isAdminUser,
@@ -100,6 +100,10 @@ function resolveAllowedDateRange({
   };
 }
 
+function isClientApproved(status: string | null | undefined) {
+  return (status ?? "pending").toLowerCase() === "approved";
+}
+
 export async function GET(req: NextRequest) {
   const clientId = req.nextUrl.searchParams.get("client_id");
 
@@ -158,7 +162,7 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const clientId = body.client_id as string | undefined;
-    let planTier: BillingPlan = "trial";
+    let planTier: AccountPlan = "free";
     const requestedNotes = typeof body.notes === "string" ? body.notes.trim() : "";
 
     const requestedStartDate = body.start_date as string | undefined;
@@ -170,7 +174,7 @@ export async function POST(req: Request) {
 
     let clientQuery = supabaseAdmin
       .from("clients")
-      .select("id")
+      .select("id, approval_status")
       .eq("id", clientId);
 
     if (!isAdminUser(user)) {
@@ -181,6 +185,16 @@ export async function POST(req: Request) {
 
     if (!client) {
       return Response.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    if (!isClientApproved(client.approval_status)) {
+      return Response.json(
+        {
+          error:
+            "This website is still pending approval. Reports unlock after analytics access is confirmed and an admin approves the site.",
+        },
+        { status: 403 },
+      );
     }
 
     const { data: billing } = await supabaseAdmin
@@ -215,7 +229,10 @@ export async function POST(req: Request) {
       if (reportsUsed >= TRIAL_REPORT_LIMIT) {
         return Response.json(
           {
-            error: `Trial accounts are limited to ${TRIAL_REPORT_LIMIT} reports per cycle. Upgrade to Pro to continue.`,
+            error:
+              planTier === "starter"
+                ? `Starter accounts are limited to ${TRIAL_REPORT_LIMIT} reports per cycle. Upgrade to Pro to continue.`
+                : `Free access is limited to ${TRIAL_REPORT_LIMIT} reports per cycle. Choose Starter or upgrade to continue.`,
           },
           { status: 403 },
         );
@@ -233,7 +250,9 @@ export async function POST(req: Request) {
     const month = `${allowedRange.startDate} to ${allowedRange.endDate}`;
     const systemNote = billingSnapshot.canUseCustomDateRange
       ? "Custom date range applied successfully."
-      : "Trial range applied automatically. Upgrade to Pro for custom dates.";
+      : planTier === "starter"
+        ? "Starter range applied automatically. Upgrade to Pro for custom dates."
+        : "Free range applied automatically. Choose Starter or upgrade for custom dates.";
     const notes = [requestedNotes, systemNote].filter(Boolean).join("\n\n");
 
     const { data, error } = await createReportWithSchemaFallback({
@@ -267,7 +286,9 @@ export async function POST(req: Request) {
         message:
           billingSnapshot.canUseCustomDateRange
             ? `${planTier === "agency" ? "Agency" : "Pro"} report generated successfully.`
-            : "Trial report generated successfully with the last 30 days applied.",
+            : planTier === "starter"
+              ? "Starter report generated successfully with the last 30 days applied."
+              : "Free report generated successfully with the last 30 days applied.",
         report: data,
         reports_remaining: reportsRemaining,
         applied_range: allowedRange,

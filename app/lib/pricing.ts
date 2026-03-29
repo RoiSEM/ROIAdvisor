@@ -1,4 +1,4 @@
-export type PlanPriceKey = "trial" | "pro" | "agency";
+export type PlanPriceKey = "starter" | "pro" | "agency";
 
 export const pricingPlans: Array<{
   name: string;
@@ -10,17 +10,17 @@ export const pricingPlans: Array<{
   featured?: boolean;
 }> = [
   {
-    name: "Trial",
-    price: "$1",
+    name: "Starter",
+    price: "$10/mo",
     description:
-      "A low-cost entry to test the platform and see real insights on your site.",
+      "The first paid tier for businesses that want consistent conversion reporting without jumping straight to Pro.",
     features: [
-      "Single site access",
+      "Up to 10 websites",
       "Limited report generation",
       "Basic health score and insights",
     ],
-    priceKey: "trial",
-    cta: "Start trial",
+    priceKey: "starter",
+    cta: "Choose Starter",
   },
   {
     name: "Pro",

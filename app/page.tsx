@@ -1,6 +1,8 @@
+import BillingAwarePricingCards from "@/components/billing-aware-pricing-cards";
 import ManageBillingButton from "@/components/manage-billing-button";
-import CheckoutButton from "@/components/checkout-button";
-import { pricingPlans } from "@/lib/pricing";
+import SiteHeaderNav from "@/components/site-header-nav";
+import { getBillingSnapshot } from "@/lib/billing";
+import { getRequestUser, supabaseAdmin } from "@/lib/supabase-server";
 import Link from "next/link";
 
 const valueProps = [
@@ -21,11 +23,56 @@ const valueProps = [
   },
 ];
 
+export default async function HomePage() {
+  const {
+    user,
+    error: userError,
+  } = await getRequestUser();
+  const signedInUser = !userError ? user : null;
 
-export default function HomePage() {
+  const { data: billing } = signedInUser
+    ? await supabaseAdmin
+        .from("billing_accounts")
+        .select("plan, status, stripe_customer_id, stripe_subscription_id")
+        .eq("user_id", signedInUser.id)
+        .maybeSingle()
+    : { data: null };
+
+  const billingSnapshot = getBillingSnapshot(billing);
+  const isSignedIn = Boolean(signedInUser);
+  const heroPrimaryHref = isSignedIn ? "/dashboard" : "/login";
+  const heroPrimaryLabel = isSignedIn ? "Open dashboard" : "Choose Starter";
+  const heroSecondaryHref = isSignedIn ? "/pricing" : "/dashboard";
+  const heroSecondaryLabel = isSignedIn ? "View pricing" : "Go to dashboard";
+  const ctaTitle = isSignedIn
+    ? "Keep building your conversion reporting setup."
+    : "Find out why your website is not converting.";
+  const ctaDescription = isSignedIn
+    ? billingSnapshot.isFree
+      ? "You already have free access. Keep setting up your website, then choose Starter or upgrade when you want more reports and custom date ranges."
+      : billingSnapshot.isStarter
+        ? "Your Starter plan is active. Head back to the dashboard to keep building websites and generating conversion reports."
+        : "Your paid plan is active. Head back to the dashboard to keep building websites and generating conversion reports."
+    : "Start with the $10/month Starter plan, then use Convert to track what matters, uncover conversion blockers, and improve results.";
+
   return (
     <main className="bg-slate-50 text-slate-950">
-      <section className="mx-auto max-w-6xl px-6 py-16 sm:px-8 sm:py-24">
+      <SiteHeaderNav current="home">
+        <Link
+          href="/pricing"
+          className="hidden rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 sm:inline-flex"
+        >
+          View pricing
+        </Link>
+        <Link
+          href="/dashboard"
+          className="inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          Open dashboard
+        </Link>
+      </SiteHeaderNav>
+
+      <section id="overview" className="mx-auto max-w-6xl px-6 py-16 sm:px-8 sm:py-24">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
             Convert by WhachaWant
@@ -41,17 +88,20 @@ export default function HomePage() {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/login"
+              href={heroPrimaryHref}
               className="inline-flex items-center justify-center rounded-lg bg-black px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
-              Start trial
+              {heroPrimaryLabel}
             </Link>
             <Link
-              href="/clients"
+              href={heroSecondaryHref}
               className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
             >
-              Go to dashboard
+              {heroSecondaryLabel}
             </Link>
+            {isSignedIn && billingSnapshot.canManageBilling && (
+              <ManageBillingButton />
+            )}
           </div>
         </div>
 
@@ -122,7 +172,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-slate-200 bg-white">
+      <section id="pricing" className="border-y border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-6 py-16 sm:px-8">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
@@ -132,106 +182,37 @@ export default function HomePage() {
               Simple pricing for conversion-focused reporting.
             </h2>
             <p className="mt-4 text-base leading-8 text-slate-600">
-              Start with a low-cost trial to validate the insights, then upgrade
+              Start with the Starter plan to validate the insights, then upgrade
               into deeper reporting and white-label delivery as your needs grow.
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            {pricingPlans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`rounded-3xl border p-8 shadow-sm ${
-                  plan.featured
-                    ? "border-slate-950 bg-slate-950 text-white"
-                    : "border-slate-200 bg-slate-50 text-slate-950"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p
-                      className={`text-sm font-semibold uppercase tracking-[0.2em] ${
-                        plan.featured ? "text-slate-300" : "text-slate-500"
-                      }`}
-                    >
-                      {plan.name}
-                    </p>
-                    <p className="mt-4 text-4xl font-bold tracking-tight">
-                      {plan.price}
-                    </p>
-                  </div>
-                  {plan.featured && (
-                    <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
-                      Most popular
-                    </span>
-                  )}
-                </div>
-
-                <p
-                  className={`mt-5 text-sm leading-7 ${
-                    plan.featured ? "text-slate-200" : "text-slate-600"
-                  }`}
-                >
-                  {plan.description}
-                </p>
-
-                <ul className="mt-6 space-y-3 text-sm leading-7">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex gap-3">
-                      <span className="mt-2 h-2 w-2 rounded-full bg-current" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-8">
-                  {plan.priceKey === "agency" ? (
-                    <a
-                      href="mailto:george@roisem.com?subject=Agency%20Plan%20Inquiry"
-                      className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition ${
-                        plan.featured
-                          ? "bg-white text-slate-950 hover:bg-slate-100"
-                          : "bg-black text-white hover:opacity-90"
-                      }`}
-                    >
-                      {plan.cta}
-                    </a>
-                  ) : (
-                    <CheckoutButton
-                      plan={plan.priceKey}
-                      label={plan.cta}
-                      featured={Boolean(plan.featured)}
-                    />
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="mt-10">
+            <BillingAwarePricingCards variant="home" />
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-16 text-center sm:px-8 sm:py-20">
-        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Find out why your website is not converting.
-        </h2>
+      <section id="cta" className="mx-auto max-w-6xl px-6 py-16 text-center sm:px-8 sm:py-20">
+        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{ctaTitle}</h2>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
-          Start with a $1 trial, then use Convert to track what matters, uncover
-          conversion blockers, and improve results.
+          {ctaDescription}
         </p>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="/login"
+            href={heroPrimaryHref}
             className="inline-flex items-center justify-center rounded-lg bg-black px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
-            Start trial
+            {heroPrimaryLabel}
           </Link>
           <Link
-            href="/clients"
+            href={heroSecondaryHref}
             className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
           >
-            View dashboard
+            {heroSecondaryLabel}
           </Link>
-          <ManageBillingButton />
+          {isSignedIn && billingSnapshot.canManageBilling && <ManageBillingButton />}
         </div>
       </section>
 

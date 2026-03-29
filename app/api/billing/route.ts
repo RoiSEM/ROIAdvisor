@@ -9,8 +9,8 @@ export async function GET() {
 
   if (userError || !user) {
     return Response.json({
-      plan: "trial",
-      raw_plan: "trial",
+      plan: "free",
+      raw_plan: null,
       status: "inactive",
       can_use_custom_date_range: false,
       has_unlimited_reports: false,

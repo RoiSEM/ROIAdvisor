@@ -21,6 +21,8 @@ type ClientFormProps = {
   initialMarketingChannels?: string[] | null;
   initialRunningAds?: boolean | null;
   initialClientNotes?: string;
+  initialApprovalStatus?: string;
+  initialApprovalNotes?: string;
   isAdmin?: boolean;
 };
 
@@ -64,6 +66,8 @@ export default function ClientForm({
   initialMarketingChannels = [],
   initialRunningAds = null,
   initialClientNotes = "",
+  initialApprovalStatus = "pending",
+  initialApprovalNotes = "",
   isAdmin = false,
 }: ClientFormProps) {
   const router = useRouter();
@@ -99,11 +103,17 @@ export default function ClientForm({
     initialRunningAds === null ? "" : initialRunningAds ? "yes" : "no",
   );
   const [clientNotes, setClientNotes] = useState(initialClientNotes);
+  const [approvalStatus, setApprovalStatus] = useState(initialApprovalStatus);
+  const [approvalNotes, setApprovalNotes] = useState(initialApprovalNotes);
   const [loading, setLoading] = useState(false);
 
   const [users, setUsers] = useState<{ id: string; email: string }[]>([]);
 
   useEffect(() => {
+    if (!isAdmin) {
+      return;
+    }
+
     fetch("/api/users")
       .then((res) => res.json())
       .then((data) => {
@@ -112,7 +122,7 @@ export default function ClientForm({
         }
       })
       .catch(console.error);
-  }, []);
+  }, [isAdmin]);
 
   function toggleArrayValue(
     value: string,
@@ -142,6 +152,8 @@ export default function ClientForm({
             website,
             email,
             user_id: portalUserId || null,
+            approval_status: approvalStatus,
+            approval_notes: approvalNotes || null,
             ga4_property_id: ga4PropertyId,
             primary_goal: primaryGoal || null,
             monthly_goal: monthlyGoal ? Number(monthlyGoal) : null,
@@ -184,10 +196,12 @@ export default function ClientForm({
         setMarketingChannels([]);
         setRunningAds("");
         setClientNotes("");
+        setApprovalStatus("pending");
+        setApprovalNotes("");
       }
 
       if (isEditMode && clientId) {
-        router.push(`/clients/${clientId}`);
+        router.push(`/dashboard/${clientId}`);
         router.refresh();
       } else {
         router.refresh();
@@ -276,6 +290,45 @@ export default function ClientForm({
           </p>
         </div>
       </section>
+
+      {isAdmin && isEditMode && (
+        <section className="space-y-3 border-t pt-5">
+          <div>
+            <h2 className="text-lg font-semibold">Approval</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Use approval to control when this website can start generating
+              reports.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Approval Status
+            </label>
+            <select
+              value={approvalStatus}
+              onChange={(e) => setApprovalStatus(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Approval Notes
+            </label>
+            <textarea
+              value={approvalNotes}
+              onChange={(e) => setApprovalNotes(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              rows={4}
+              placeholder="Track analytics invite progress, acceptance, or any onboarding notes."
+            />
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3 border-t pt-5">
         <div>

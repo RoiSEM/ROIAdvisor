@@ -8,7 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 const PRICE_MAP = {
-  trial: process.env.STRIPE_PRICE_TRIAL!,
+  starter: process.env.STRIPE_PRICE_STARTER || process.env.STRIPE_PRICE_TRIAL!,
   pro: process.env.STRIPE_PRICE_PRO!,
 };
 
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (billingSnapshot.canManageBilling && billingSnapshot.effectivePlan !== "trial" && plan === "trial") {
+    if (billingSnapshot.canManageBilling && billingSnapshot.effectivePlan !== "starter" && plan === "starter") {
       return NextResponse.json(
         { error: "Use the billing portal to change or cancel an existing paid plan." },
         { status: 409 },
