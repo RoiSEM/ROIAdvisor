@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { supabase } from "@/lib/supabase-server";
+import { getBillingSnapshot } from "@/lib/billing";
+import { getRequestUser, supabaseAdmin } from "@/lib/supabase-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-03-25.dahlia",
@@ -10,6 +11,13 @@ const PRICE_MAP = {
   trial: process.env.STRIPE_PRICE_TRIAL!,
   pro: process.env.STRIPE_PRICE_PRO!,
 };
+
+function resolveAppUrl(pathname: string | undefined, fallbackPath: string) {
+  const path =
+    pathname && pathname.startsWith("/") ? pathname : fallbackPath;
+
+  return `${process.env.NEXT_PUBLIC_SITE_URL}${path}`;
+}
 
 export async function POST(req: Request) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -27,7 +35,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { plan } = await req.json();
+    const { plan, success_path, cancel_path } = await req.json();
 
     const priceId = PRICE_MAP[plan as keyof typeof PRICE_MAP];
 
@@ -37,23 +45,41 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const authHeader = req.headers.get("authorization");
-    const accessToken = authHeader?.startsWith("Bearer ")
-      ? authHeader.replace("Bearer ", "")
-      : null;
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const {
-      data: { user },
+      user,
       error: userError,
-    } = await supabase.auth.getUser(accessToken);
+    } = await getRequestUser(req);
 
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { data: billing, error: billingError } = await supabaseAdmin
+      .from("billing_accounts")
+      .select("plan, status, stripe_customer_id, stripe_subscription_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (billingError) {
+      return NextResponse.json({ error: billingError.message }, { status: 500 });
+    }
+
+    const billingSnapshot = getBillingSnapshot(billing);
+
+    if (billingSnapshot.canManageBilling && billingSnapshot.effectivePlan === plan) {
+      return NextResponse.json(
+        { error: `You already have the ${plan} plan.` },
+        { status: 409 },
+      );
+    }
+
+    if (billingSnapshot.canManageBilling && billingSnapshot.effectivePlan !== "trial" && plan === "trial") {
+      return NextResponse.json(
+        { error: "Use the billing portal to change or cancel an existing paid plan." },
+        { status: 409 },
+      );
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [
@@ -65,10 +91,18 @@ export async function POST(req: Request) {
       client_reference_id: user.id,
       metadata: {
         user_id: user.id,
+        selected_plan: plan,
       },
-      customer_email: user.email ?? undefined,
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/clients?checkout=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/?checkout=cancelled`,
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          selected_plan: plan,
+        },
+      },
+      customer: billing?.stripe_customer_id ?? undefined,
+      customer_email: billing?.stripe_customer_id ? undefined : user.email ?? undefined,
+      success_url: resolveAppUrl(success_path, "/pricing?checkout=success"),
+      cancel_url: resolveAppUrl(cancel_path, "/pricing?checkout=cancelled"),
     });
 
     return NextResponse.json({ url: session.url });

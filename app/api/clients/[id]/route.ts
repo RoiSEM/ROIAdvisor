@@ -1,4 +1,8 @@
-import { supabase } from "@/lib/supabase-server";
+import {
+  getRequestUser,
+  isAdminUser,
+  supabaseAdmin,
+} from "@/lib/supabase-server";
 
 export async function GET(
   req: Request,
@@ -6,11 +10,25 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { data, error } = await supabase
+    const {
+      user,
+      error: userError,
+    } = await getRequestUser(req);
+
+    if (userError || !user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let query = supabaseAdmin
       .from("clients")
       .select("*")
-      .eq("id", id)
-      .single();
+      .eq("id", id);
+
+    if (!isAdminUser(user)) {
+      query = query.eq("user_id", user.id);
+    }
+
+    const { data, error } = await query.maybeSingle();
 
     if (error || !data) {
       return Response.json({ error: error?.message || "Client not found" }, { status: 404 });
@@ -31,11 +49,31 @@ export async function PATCH(
     const { id } = await params;
 
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      user,
+      error: userError,
+    } = await getRequestUser(req);
 
-    const ADMIN_EMAILS = ["george@roisem.com"];
-    const isAdmin = ADMIN_EMAILS.includes(user?.email || "");
+    if (userError || !user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const isAdmin = isAdminUser(user);
+
+    let existingQuery = supabaseAdmin
+      .from("clients")
+      .select("id")
+      .eq("id", id);
+
+    if (!isAdmin) {
+      existingQuery = existingQuery.eq("user_id", user.id);
+    }
+
+    const { data: existingClient, error: existingClientError } =
+      await existingQuery.maybeSingle();
+
+    if (existingClientError || !existingClient) {
+      return Response.json({ error: "Client not found" }, { status: 404 });
+    }
 
     const {
       name,
@@ -56,13 +94,13 @@ export async function PATCH(
       client_notes,
     } = await req.json();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("clients")
       .update({
         name,
         website,
         email,
-        user_id: isAdmin ? user_id : undefined,
+        ...(isAdmin ? { user_id } : {}),
         ga4_property_id,
         primary_goal,
         monthly_goal,
@@ -97,16 +135,29 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const {
+      user,
+      error: userError,
+    } = await getRequestUser(req);
 
-    const { data, error } = await supabase
-      .from("clients")
-      .delete()
-      .eq("id", id)
-      .select()
-      .single();
+    if (userError || !user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let query = supabaseAdmin.from("clients").delete().eq("id", id);
+
+    if (!isAdminUser(user)) {
+      query = query.eq("user_id", user.id);
+    }
+
+    const { data, error } = await query.select().maybeSingle();
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return Response.json({ error: "Client not found" }, { status: 404 });
     }
 
     return Response.json(data);

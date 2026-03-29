@@ -1,15 +1,22 @@
-import { supabase } from "@/lib/supabase-server";
-import { NextResponse } from "next/server";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 
 export async function GET() {
-
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    user,
+    error,
+  } = await getRequestUser();
 
-  return NextResponse.json({
+  if (error || !user) {
+    return Response.json({
+      email: null,
+      id: null,
+      isAdmin: false,
+    });
+  }
+
+  return Response.json({
     email: user?.email || null,
     id: user?.id || null,
-    isAdmin: user?.email === "george@roisem.com",
+    isAdmin: isAdminUser(user),
   });
 }

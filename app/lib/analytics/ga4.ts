@@ -60,15 +60,24 @@ function getGoogleAnalyticsClient() {
   });
 }
 
-export async function getGA4Report(propertyId: string) {
+export async function getGA4Report(
+  propertyId: string,
+  dateRange?: {
+    startDate?: string | null;
+    endDate?: string | null;
+  },
+) {
   const client = getGoogleAnalyticsClient();
+
+  const startDate = dateRange?.startDate || "30daysAgo";
+  const endDate = dateRange?.endDate || "today";
 
   const [response] = await client.runReport({
     property: `properties/${propertyId}`,
     dateRanges: [
       {
-        startDate: "30daysAgo",
-        endDate: "today",
+        startDate,
+        endDate,
       },
     ],
     metrics: [
@@ -81,7 +90,10 @@ export async function getGA4Report(propertyId: string) {
     ],
   });
 
-  console.log("GA4 response:", JSON.stringify(response, null, 2));
+  console.log(
+    "GA4 response:",
+    JSON.stringify({ startDate, endDate, response }, null, 2),
+  );
 
   const row = response.rows?.[0];
 

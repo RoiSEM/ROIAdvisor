@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase-server";
+import { getRequestUser, isAdminUser, supabaseAdmin } from "@/lib/supabase-server";
 import { buildPreviewSummary, getReportHealthScore } from "@/lib/report-summary";
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 
@@ -152,13 +152,46 @@ function estimateTextHeight(
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
+    const {
+      user,
+      error: userError,
+    } = await getRequestUser(req);
 
-    const { data: report, error } = await supabase
+    if (userError || !user) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const { data: reportAccess, error: reportAccessError } = await supabaseAdmin
+      .from("reports")
+      .select("id, client_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (reportAccessError || !reportAccess) {
+      return new Response("Report not found", { status: 404 });
+    }
+
+    let clientQuery = supabaseAdmin
+      .from("clients")
+      .select("id")
+      .eq("id", reportAccess.client_id);
+
+    if (!isAdminUser(user)) {
+      clientQuery = clientQuery.eq("user_id", user.id);
+    }
+
+    const { data: clientAccess } = await clientQuery.maybeSingle();
+
+    if (!clientAccess) {
+      return new Response("Report not found", { status: 404 });
+    }
+
+    const { data: report, error } = await supabaseAdmin
       .from("reports")
       .select(
         `

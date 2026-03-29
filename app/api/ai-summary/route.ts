@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { supabase } from "@/lib/supabase-server";
+import { getRequestUser, isAdminUser, supabaseAdmin } from "@/lib/supabase-server";
 import {
   buildSummaryPrompt,
   type SummaryClientData,
@@ -12,6 +12,15 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
+    const {
+      user,
+      error: userError,
+    } = await getRequestUser(req);
+
+    if (userError || !user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const {
       reportId,
@@ -29,7 +38,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "reportId is required" }, { status: 400 });
     }
 
-    const { data: report, error: reportError } = await supabase
+    const { data: report, error: reportError } = await supabaseAdmin
       .from("reports")
       .select("id, client_id")
       .eq("id", reportId)
@@ -39,16 +48,21 @@ export async function POST(req: Request) {
       return Response.json({ error: "Report not found" }, { status: 404 });
     }
 
-    const { data: client, error: clientError } = await supabase
+    let clientQuery = supabaseAdmin
       .from("clients")
       .select("*")
-      .eq("id", report.client_id)
-      .maybeSingle();
+      .eq("id", report.client_id);
 
-    if (clientError) {
+    if (!isAdminUser(user)) {
+      clientQuery = clientQuery.eq("user_id", user.id);
+    }
+
+    const { data: client, error: clientError } = await clientQuery.maybeSingle();
+
+    if (clientError || !client) {
       return Response.json(
         { error: "Failed to load client context" },
-        { status: 500 },
+        { status: 404 },
       );
     }
 
@@ -94,7 +108,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("reports")
       .update({
         ai_summary: summary,

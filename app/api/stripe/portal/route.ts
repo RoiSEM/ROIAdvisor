@@ -1,24 +1,23 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { supabase } from "@/lib/supabase-server";
+import { getRequestUser, supabaseAdmin } from "@/lib/supabase-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-03-25.dahlia",
 });
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    // 1. Get current user
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      user,
+      error: userError,
+    } = await getRequestUser(req);
 
-    if (!user) {
+    if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Get billing record
-    const { data: billing, error } = await supabase
+    const { data: billing, error } = await supabaseAdmin
       .from("billing_accounts")
       .select("stripe_customer_id")
       .eq("user_id", user.id)
@@ -31,7 +30,6 @@ export async function POST() {
       );
     }
 
-    // 3. Create Stripe portal session
     const session = await stripe.billingPortal.sessions.create({
       customer: billing.stripe_customer_id,
       return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/clients`,

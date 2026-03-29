@@ -1,10 +1,29 @@
-import { supabase } from "@/lib/supabase-server";
+import {
+  getRequestUser,
+  isAdminUser,
+  supabaseAdmin,
+} from "@/lib/supabase-server";
 
-export async function GET() {
-  const { data, error } = await supabase
+export async function GET(req: Request) {
+  const {
+    user,
+    error: userError,
+  } = await getRequestUser(req);
+
+  if (userError || !user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let query = supabaseAdmin
     .from("clients")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (!isAdminUser(user)) {
+    query = query.eq("user_id", user.id);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
@@ -15,11 +34,15 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    user,
+    error: userError,
+  } = await getRequestUser(req);
 
-  const ADMIN_EMAILS = ["george@roisem.com"];
-  const isAdmin = ADMIN_EMAILS.includes(user?.email || "");
+  if (userError || !user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const isAdmin = isAdminUser(user);
 
   try {
     const {
@@ -41,14 +64,14 @@ export async function POST(req: Request) {
       client_notes,
     } = await req.json();
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("clients")
       .insert([
         {
           name,
           website,
           email,
-          user_id: isAdmin ? user_id : user?.id || null,
+          user_id: isAdmin ? user_id : user.id,
           ga4_property_id,
           primary_goal,
           monthly_goal,
