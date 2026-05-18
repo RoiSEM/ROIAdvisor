@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 type ClientFormProps = {
   clientId?: string;
@@ -36,17 +36,134 @@ const CONVERSION_OPTIONS = [
 ];
 
 const CHANNEL_OPTIONS = [
-  "SEO",
+  "Google (SEO)",
   "Google Ads",
-  "Facebook Ads",
+  "Facebook/Instagram Ads",
   "Social Media",
   "Email",
   "Referral",
   "Direct",
-  "Other",
+  "Not sure",
 ];
 
+const TRAFFIC_QUALITY_OPTIONS = [
+  "They are actively looking for my service",
+  "Some are, some aren't",
+  "Most are just browsing",
+  "Not sure",
+];
 
+const ACTION_LOCATION_OPTIONS = [
+  "Homepage",
+  "Service page",
+  "Dedicated landing page",
+  "Not sure",
+];
+
+const VISITOR_BEHAVIOR_OPTIONS = [
+  "Fill out a form",
+  "Call",
+  "Leave without taking action",
+  "Not sure",
+];
+
+const ACTION_FREQUENCY_OPTIONS = [
+  "Yes, often",
+  "Sometimes",
+  "Rarely",
+  "Not sure",
+];
+
+const STANDOUT_OPTIONS = [
+  "Price",
+  "Speed",
+  "Quality",
+  "Reputation",
+  "Convenience",
+  "Not sure",
+];
+
+const FRICTION_OPTIONS = [
+  "Price is too high",
+  "Slow response time",
+  "Limited availability",
+  "Weak online presence",
+  "Not sure",
+];
+
+const GROWTH_SOURCE_OPTIONS = [
+  "More traffic",
+  "Better conversion",
+  "Ads",
+  "SEO",
+  "Not sure",
+];
+
+const CONCERN_OPTIONS = [
+  "Competitors",
+  "Cost of ads",
+  "Not enough leads",
+  "Website performance",
+  "Not sure",
+];
+
+function getGuidedValue(source: string, label: string) {
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = source.match(new RegExp(`^- ${escapedLabel}: (.+)$`, "m"));
+
+  return match?.[1]?.trim() || "";
+}
+
+function getInitialSelectValue(
+  source: string,
+  label: string,
+  options: string[],
+  fallback = "",
+) {
+  const guidedValue = getGuidedValue(source, label);
+  const value = guidedValue || fallback;
+
+  return options.includes(value) ? value : "";
+}
+
+function buildGuidedContext(entries: Array<[string, string]>) {
+  return entries
+    .filter(([, value]) => value.trim())
+    .map(([label, value]) => `- ${label}: ${value}`)
+    .join("\n");
+}
+
+function normalizeMarketingChannels(values: string[] | null | undefined) {
+  return (values || []).map((value) => {
+    if (value === "SEO") return "Google (SEO)";
+    if (value === "Facebook Ads") return "Facebook/Instagram Ads";
+
+    return value;
+  });
+}
+
+function AccordionSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <details className="group rounded border border-white/70 bg-transparent">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 marker:content-none">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <span className="text-sm opacity-70 group-open:hidden">Open</span>
+        <span className="hidden text-sm opacity-70 group-open:inline">
+          Close
+        </span>
+      </summary>
+      <div className="space-y-3 border-t border-white/30 px-4 py-4">
+        {children}
+      </div>
+    </details>
+  );
+}
 
 export default function ClientForm({
   clientId,
@@ -91,13 +208,69 @@ export default function ClientForm({
   const [conversionTrackingStatus, setConversionTrackingStatus] = useState(
     initialConversionTrackingStatus,
   );
-  const [mainCta, setMainCta] = useState(initialMainCta);
-  const [funnelDescription, setFunnelDescription] = useState(
-    initialFunnelDescription,
+  const [trafficQuality, setTrafficQuality] = useState(
+    getInitialSelectValue(
+      initialFunnelDescription,
+      "Visitor intent",
+      TRAFFIC_QUALITY_OPTIONS,
+    ),
   );
-  const [knownIssues, setKnownIssues] = useState(initialKnownIssues);
+  const [actionLocation, setActionLocation] = useState(
+    getInitialSelectValue(
+      initialFunnelDescription,
+      "Action location",
+      ACTION_LOCATION_OPTIONS,
+      initialMainCta,
+    ),
+  );
+  const [visitorBehavior, setVisitorBehavior] = useState(
+    getInitialSelectValue(
+      initialFunnelDescription,
+      "Visitor behavior",
+      VISITOR_BEHAVIOR_OPTIONS,
+    ),
+  );
+  const [actionFrequency, setActionFrequency] = useState(
+    getInitialSelectValue(
+      initialFunnelDescription,
+      "Action frequency",
+      ACTION_FREQUENCY_OPTIONS,
+    ),
+  );
+  const [standoutFactor, setStandoutFactor] = useState(
+    getInitialSelectValue(
+      initialFunnelDescription,
+      "Standout factor",
+      STANDOUT_OPTIONS,
+    ),
+  );
+  const [conversionFriction, setConversionFriction] = useState(
+    getInitialSelectValue(
+      initialKnownIssues,
+      "Conversion friction",
+      FRICTION_OPTIONS,
+    ),
+  );
+  const [growthSource, setGrowthSource] = useState(
+    getInitialSelectValue(
+      initialFunnelDescription,
+      "Expected growth source",
+      GROWTH_SOURCE_OPTIONS,
+    ),
+  );
+  const [topConcern, setTopConcern] = useState(
+    getInitialSelectValue(
+      initialFunnelDescription,
+      "Top concern",
+      CONCERN_OPTIONS,
+    ),
+  );
+  const [internalIssue, setInternalIssue] = useState(
+    getGuidedValue(initialKnownIssues, "What seems broken") ||
+      (!initialKnownIssues.startsWith("- ") ? initialKnownIssues : ""),
+  );
   const [marketingChannels, setMarketingChannels] = useState<string[]>(
-    initialMarketingChannels || [],
+    normalizeMarketingChannels(initialMarketingChannels),
   );
   const [runningAds, setRunningAds] = useState<string>(
     initialRunningAds === null ? "" : initialRunningAds ? "yes" : "no",
@@ -162,9 +335,22 @@ export default function ClientForm({
               : null,
             conversion_types: conversionTypes,
             conversion_tracking_status: conversionTrackingStatus || null,
-            main_cta: mainCta || null,
-            funnel_description: funnelDescription || null,
-            known_issues: knownIssues || null,
+            main_cta: actionLocation || null,
+            funnel_description:
+              buildGuidedContext([
+                ["Visitor intent", trafficQuality],
+                ["Action location", actionLocation],
+                ["Visitor behavior", visitorBehavior],
+                ["Action frequency", actionFrequency],
+                ["Standout factor", standoutFactor],
+                ["Expected growth source", growthSource],
+                ["Top concern", topConcern],
+              ]) || null,
+            known_issues:
+              buildGuidedContext([
+                ["Conversion friction", conversionFriction],
+                ["What seems broken", internalIssue],
+              ]) || null,
             marketing_channels: marketingChannels,
             running_ads: runningAds === "" ? null : runningAds === "yes",
             client_notes: clientNotes || null,
@@ -190,9 +376,15 @@ export default function ClientForm({
         setAverageConversionValue("");
         setConversionTypes([]);
         setConversionTrackingStatus("");
-        setMainCta("");
-        setFunnelDescription("");
-        setKnownIssues("");
+        setTrafficQuality("");
+        setActionLocation("");
+        setVisitorBehavior("");
+        setActionFrequency("");
+        setStandoutFactor("");
+        setConversionFriction("");
+        setGrowthSource("");
+        setTopConcern("");
+        setInternalIssue("");
         setMarketingChannels([]);
         setRunningAds("");
         setClientNotes("");
@@ -215,90 +407,112 @@ export default function ClientForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6 rounded border p-4">
+    <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded border p-4">
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Basic Info</h2>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Business Name
-          </label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            placeholder="Acme Co"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium">Website</label>
-          <input
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            placeholder="https://example.com"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium">Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            placeholder="contact@example.com"
-          />
-        </div>
-        {isAdmin && (
+        <div className="grid gap-3 lg:grid-cols-3">
           <div>
             <label className="mb-1 block text-sm font-medium">
-              Assigned User
+              Business Name
             </label>
-            <select
-              value={portalUserId}
-              onChange={(e) => setPortalUserId(e.target.value)}
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="w-full rounded border px-3 py-2"
-            >
-              <option value="">Unassigned</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.email}
-                </option>
-              ))}
-            </select>
+              placeholder="Acme Co"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Website</label>
+            <input
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              placeholder="https://example.com"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              placeholder="contact@example.com"
+            />
+          </div>
+        </div>
+
+        <div className={`grid gap-3 ${isAdmin ? "md:grid-cols-2" : ""}`}>
+          {isAdmin && (
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Assigned User
+              </label>
+              <select
+                value={portalUserId}
+                onChange={(e) => setPortalUserId(e.target.value)}
+                className="w-full rounded border px-3 py-2"
+              >
+                <option value="">Unassigned</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.email}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Optional. Assign this website to an existing user account.
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              GA4 Property ID
+            </label>
+            <input
+              value={ga4PropertyId}
+              onChange={(e) => setGa4PropertyId(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              placeholder="123456789"
+            />
             <p className="mt-1 text-xs text-gray-500">
-              Optional. Assign this website to an existing user account.
+              Use the numeric GA4 Property ID, not the Measurement ID.
             </p>
           </div>
-        )}
-
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            GA4 Property ID
-          </label>
-          <input
-            value={ga4PropertyId}
-            onChange={(e) => setGa4PropertyId(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            placeholder="123456789"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Use the numeric GA4 Property ID, not the Measurement ID.
-          </p>
         </div>
       </section>
 
       {isAdmin && isEditMode && (
         <section className="space-y-3 border-t pt-5">
           <div>
-            <h2 className="text-lg font-semibold">Approval</h2>
+            <h2 className="text-lg font-semibold">
+              Analytics Access & Approval
+            </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Use approval to control when this website can start generating
-              reports.
+              Reports unlock after the client adds the service account to GA4
+              and an admin confirms access.
             </p>
+          </div>
+
+          <div className="rounded border border-white/70 bg-transparent p-4 text-sm">
+            <p className="font-semibold">
+              Ask the client to add this email to their GA4 property:
+            </p>
+            <code className="mt-2 block overflow-x-auto rounded border border-white/30 bg-black px-3 py-2 text-xs text-white">
+              ga4-service@roi-analytics-490813.iam.gserviceaccount.com
+            </code>
+            <ol className="mt-3 list-decimal space-y-1 pl-5">
+              <li>Open Google Analytics Admin.</li>
+              <li>Go to Property access management.</li>
+              <li>Add the service account email with Viewer access.</li>
+              <li>Confirm the numeric GA4 Property ID is saved above.</li>
+            </ol>
           </div>
 
           <div>
@@ -339,24 +553,24 @@ export default function ClientForm({
           </p>
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">Primary Goal</label>
-          <select
-            value={primaryGoal}
-            onChange={(e) => setPrimaryGoal(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Select a goal</option>
-            <option value="Leads">Leads</option>
-            <option value="Sales">Sales</option>
-            <option value="Calls">Calls</option>
-            <option value="Bookings">Bookings</option>
-            <option value="Awareness">Awareness</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium">Primary Goal</label>
+            <select
+              value={primaryGoal}
+              onChange={(e) => setPrimaryGoal(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select a goal</option>
+              <option value="Leads">Leads</option>
+              <option value="Sales">Sales</option>
+              <option value="Calls">Calls</option>
+              <option value="Bookings">Bookings</option>
+              <option value="Awareness">Awareness</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium">
               Monthly Goal
@@ -428,9 +642,7 @@ export default function ClientForm({
         </div>
       </section>
 
-      <section className="space-y-3 border-t pt-5">
-        <h2 className="text-lg font-semibold">Marketing Context</h2>
-
+      <AccordionSection title="Marketing Context">
         <div>
           <label className="mb-2 block text-sm font-medium">
             Where does traffic come from?
@@ -458,48 +670,177 @@ export default function ClientForm({
           </div>
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Are ads currently running?
-          </label>
-          <select
-            value={runningAds}
-            onChange={(e) => setRunningAds(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Select one</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Are ads currently running?
+            </label>
+            <select
+              value={runningAds}
+              onChange={(e) => setRunningAds(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              How would you describe your visitors?
+            </label>
+            <select
+              value={trafficQuality}
+              onChange={(e) => setTrafficQuality(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              {TRAFFIC_QUALITY_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </section>
+      </AccordionSection>
 
-      <section className="space-y-3 border-t pt-5">
-        <h2 className="text-lg font-semibold">Funnel Insight</h2>
+      <AccordionSection title="Funnel Behavior">
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Where do customers usually take action?
+            </label>
+            <select
+              value={actionLocation}
+              onChange={(e) => setActionLocation(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              {ACTION_LOCATION_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Main Call To Action
-          </label>
-          <input
-            value={mainCta}
-            onChange={(e) => setMainCta(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            placeholder="Get a Quote"
-          />
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              What do visitors usually do?
+            </label>
+            <select
+              value={visitorBehavior}
+              onChange={(e) => setVisitorBehavior(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              {VISITOR_BEHAVIOR_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Do people take action on your site?
+            </label>
+            <select
+              value={actionFrequency}
+              onChange={(e) => setActionFrequency(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              {ACTION_FREQUENCY_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+      </AccordionSection>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            What happens after someone visits the site?
-          </label>
-          <textarea
-            value={funnelDescription}
-            onChange={(e) => setFunnelDescription(e.target.value)}
-            className="w-full rounded border px-3 py-2"
-            rows={4}
-            placeholder="Example: User lands on service page, clicks CTA, fills out form, then receives a phone call."
-          />
+      <AccordionSection title="Offer & Positioning">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              What makes your business stand out?
+            </label>
+            <select
+              value={standoutFactor}
+              onChange={(e) => setStandoutFactor(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              {STANDOUT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              What might stop someone from choosing you?
+            </label>
+            <select
+              value={conversionFriction}
+              onChange={(e) => setConversionFriction(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              {FRICTION_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </AccordionSection>
+
+      <AccordionSection title="Growth Insight">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Where do you think growth should come from?
+            </label>
+            <select
+              value={growthSource}
+              onChange={(e) => setGrowthSource(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              {GROWTH_SOURCE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              What concerns you most right now?
+            </label>
+            <select
+              value={topConcern}
+              onChange={(e) => setTopConcern(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select one</option>
+              {CONCERN_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div>
@@ -507,8 +848,8 @@ export default function ClientForm({
             What do you think is not working?
           </label>
           <textarea
-            value={knownIssues}
-            onChange={(e) => setKnownIssues(e.target.value)}
+            value={internalIssue}
+            onChange={(e) => setInternalIssue(e.target.value)}
             className="w-full rounded border px-3 py-2"
             rows={3}
             placeholder="Example: Ads are running but no leads are coming in."
@@ -527,7 +868,7 @@ export default function ClientForm({
             placeholder="Optional extra context"
           />
         </div>
-      </section>
+      </AccordionSection>
 
       <button
         disabled={loading}

@@ -340,9 +340,9 @@ Business context:
 - Average conversion value: ${formatCurrency(client?.average_conversion_value)}
 - Conversion types: ${formatList(client?.conversion_types)}
 - Conversion tracking status: ${client?.conversion_tracking_status || "Not provided"}
-- Main CTA: ${client?.main_cta || "Not provided"}
-- Funnel description: ${client?.funnel_description || "Not provided"}
-- Known issues: ${client?.known_issues || "Not provided"}
+- Customer action location: ${client?.main_cta || "Not provided"}
+- Guided funnel and positioning signals: ${client?.funnel_description || "Not provided"}
+- Conversion friction and internal issue notes: ${client?.known_issues || "Not provided"}
 - Marketing channels: ${formatList(client?.marketing_channels)}
 - Running ads: ${
     client?.running_ads == null ? "Not provided" : client.running_ads ? "Yes" : "No"
