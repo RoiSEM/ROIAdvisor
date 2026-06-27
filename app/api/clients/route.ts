@@ -5,6 +5,46 @@ import {
   supabaseAdmin,
 } from "@/lib/supabase-server";
 
+function getMissingColumnName(message: string | undefined) {
+  if (!message) return null;
+
+  const match = message.match(/Could not find the '([^']+)' column/);
+  return match?.[1] ?? null;
+}
+
+async function insertClientWithSchemaFallback(payload: Record<string, unknown>) {
+  const insertPayload = { ...payload };
+  const optionalColumns = new Set([
+    "logo_url",
+    "technical_issues",
+    "design_concerns",
+    "ad_channel_notes",
+    "offer_message_concerns",
+    "tracking_notes",
+  ]);
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from("clients")
+      .insert([insertPayload])
+      .select()
+      .single();
+
+    if (!error) {
+      return { data, error: null };
+    }
+
+    const missingColumn = getMissingColumnName(error.message);
+
+    if (!missingColumn || !optionalColumns.has(missingColumn)) {
+      return { data: null, error };
+    }
+
+    delete insertPayload[missingColumn];
+    optionalColumns.delete(missingColumn);
+  }
+}
+
 export async function GET(req: Request) {
   const {
     user,
@@ -50,6 +90,7 @@ export async function POST(req: Request) {
       name,
       website,
       email,
+      logo_url,
       user_id,
       ga4_property_id,
       primary_goal,
@@ -60,6 +101,11 @@ export async function POST(req: Request) {
       main_cta,
       funnel_description,
       known_issues,
+      technical_issues,
+      design_concerns,
+      ad_channel_notes,
+      offer_message_concerns,
+      tracking_notes,
       marketing_channels,
       running_ads,
       client_notes,
@@ -100,34 +146,34 @@ export async function POST(req: Request) {
       }
     }
 
-    const { data, error } = await supabaseAdmin
-      .from("clients")
-      .insert([
-        {
-          name,
-          website,
-          email,
-          user_id: isAdmin ? user_id : user.id,
-          ga4_property_id,
-          primary_goal,
-          monthly_goal,
-          average_conversion_value,
-          conversion_types,
-          conversion_tracking_status,
-          main_cta,
-          funnel_description,
-          known_issues,
-          marketing_channels,
-          running_ads,
-          client_notes,
-          approval_status: "pending",
-          approval_notes: null,
-          approved_at: null,
-          approved_by_user_id: null,
-        },
-      ])
-      .select()
-      .single();
+    const { data, error } = await insertClientWithSchemaFallback({
+      name,
+      website,
+      email,
+      logo_url,
+      user_id: isAdmin ? user_id : user.id,
+      ga4_property_id,
+      primary_goal,
+      monthly_goal,
+      average_conversion_value,
+      conversion_types,
+      conversion_tracking_status,
+      main_cta,
+      funnel_description,
+      known_issues,
+      technical_issues,
+      design_concerns,
+      ad_channel_notes,
+      offer_message_concerns,
+      tracking_notes,
+      marketing_channels,
+      running_ads,
+      client_notes,
+      approval_status: "pending",
+      approval_notes: null,
+      approved_at: null,
+      approved_by_user_id: null,
+    });
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });

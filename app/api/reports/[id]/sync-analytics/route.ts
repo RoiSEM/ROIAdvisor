@@ -15,10 +15,18 @@ async function updateReportAnalyticsWithSchemaFallback(reportId: string, payload
   bounce_rate: number;
   engagement_rate: number;
   conversions: number;
+  channel_performance: unknown;
+  landing_page_performance: unknown;
+  device_performance: unknown;
   analytics_synced_at: string;
 }) {
   const updatePayload: Record<string, unknown> = { ...payload };
-  const optionalColumns = new Set(["analytics_synced_at"]);
+  const optionalColumns = new Set([
+    "analytics_synced_at",
+    "channel_performance",
+    "landing_page_performance",
+    "device_performance",
+  ]);
 
   while (true) {
     const { error } = await supabaseAdmin
@@ -121,8 +129,17 @@ export async function POST(
       );
     }
 
-    const { traffic, pageViews, activeUsers, bounceRate, engagementRate, conversions } =
-      await getGA4Report(client.ga4_property_id, {
+    const {
+      traffic,
+      pageViews,
+      activeUsers,
+      bounceRate,
+      engagementRate,
+      conversions,
+      channelPerformance,
+      landingPagePerformance,
+      devicePerformance,
+    } = await getGA4Report(client.ga4_property_id, {
         startDate: analyticsReport.start_date ?? null,
         endDate: analyticsReport.end_date ?? null,
       });
@@ -134,6 +151,9 @@ export async function POST(
       bounce_rate: bounceRate,
       engagement_rate: engagementRate,
       conversions,
+      channel_performance: channelPerformance,
+      landing_page_performance: landingPagePerformance,
+      device_performance: devicePerformance,
       analytics_synced_at: new Date().toISOString(),
     });
 
@@ -144,7 +164,18 @@ export async function POST(
       );
     }
 
-    return Response.json({ success: true, traffic, pageViews, activeUsers, bounceRate, engagementRate, conversions });
+    return Response.json({
+      success: true,
+      traffic,
+      pageViews,
+      activeUsers,
+      bounceRate,
+      engagementRate,
+      conversions,
+      channelPerformance,
+      landingPagePerformance,
+      devicePerformance,
+    });
   } catch (error) {
     console.error("Sync analytics error:", error);
 

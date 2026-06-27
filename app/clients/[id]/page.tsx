@@ -12,6 +12,7 @@ import RegenerateSummaryButton from "@/components/regenerate-summary-button";
 import DeleteReportButton from "@/components/delete-summary-button";
 import SyncAnalyticsButton from "@/components/sync-analytics-button";
 import ReportHeaderActions from "@/components/report-header-actions";
+import ServiceCta from "@/components/service-cta";
 import { buildPreviewSummary } from "@/lib/report-summary";
 import SignOutButton from "@/components/sign-out-button";
 import { redirect } from "next/navigation";
@@ -94,7 +95,7 @@ function splitSummarySections(markdown: string | null) {
   let currentLines: string[] = [];
 
   const pushSection = () => {
-    const content = currentLines.join("\n").trim();
+    const content = cleanSectionContent(currentLines.join("\n"));
 
     if (!currentTitle && !content) return;
 
@@ -113,7 +114,8 @@ function splitSummarySections(markdown: string | null) {
 
     if (!inCodeFence && /^##\s+/.test(line)) {
       pushSection();
-      currentTitle = line.replace(/^##\s+/, "").trim() || "Summary";
+      currentTitle =
+        normalizeSectionTitle(line.replace(/^##\s+/, "").trim()) || "Summary";
       currentLines = [];
       continue;
     }
@@ -123,19 +125,66 @@ function splitSummarySections(markdown: string | null) {
 
   pushSection();
 
-  return sections.filter(
-    (section) => section.title.trim() || section.content.trim(),
-  );
+  return sections.filter((section) => section.content.trim());
+}
+
+function normalizeSectionTitle(title: string) {
+  const key = title.toLowerCase();
+
+  if (key.includes("performance summary")) {
+    return "Summary Insights & Performance Summary";
+  }
+
+  if (key.includes("key insights")) {
+    return "Strengths: What's Working";
+  }
+
+  if (key.includes("conversion diagnosis")) {
+    return "Weaknesses: What's Not Working";
+  }
+
+  if (key === "opportunities" || key.includes("where to improve")) {
+    return "Opportunities: Where to Improve";
+  }
+
+  if (key.includes("threats") || key.includes("watch out")) {
+    return "Threats: Watch Out For";
+  }
+
+  if (key.includes("recommended actions") || key.includes("recommendations")) {
+    return "Recommendations";
+  }
+
+  return title;
+}
+
+function cleanSectionContent(content: string) {
+  return content
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+
+      return ![
+        /^secondary contributing issues include:\s*$/i,
+        /^primary contributing issues include:\s*$/i,
+        /^additional considerations include:\s*$/i,
+        /^supporting issues include:\s*$/i,
+      ].some((pattern) => pattern.test(trimmed));
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function sectionIcon(title: string) {
   const key = title.toLowerCase();
 
-  if (key.includes("performance summary")) return "📊";
-  if (key.includes("key insights")) return "💡";
-  if (key.includes("conversion diagnosis")) return "🩺";
+  if (key.includes("summary insights")) return "📊";
+  if (key.includes("strengths")) return "✅";
+  if (key.includes("weaknesses")) return "⚠️";
   if (key.includes("opportunities")) return "🚀";
-  if (key.includes("recommended actions")) return "✅";
+  if (key.includes("threats")) return "🛡️";
+  if (key.includes("recommendations")) return "➡️";
 
   return "•";
 }
@@ -155,8 +204,8 @@ function extractBulletItems(content: string) {
       continue;
     }
 
-    if (!inCodeFence && /^[-*]\s+/.test(trimmed)) {
-      bullets.push(trimmed.replace(/^[-*]\s+/, "").trim());
+    if (!inCodeFence && /^(?:[-*]|\d+\.)\s+/.test(trimmed)) {
+      bullets.push(trimmed.replace(/^(?:[-*]|\d+\.)\s+/, "").trim());
       continue;
     }
 
@@ -173,17 +222,18 @@ function supportsBulletPanel(title: string) {
   const key = title.toLowerCase();
 
   return (
-    key.includes("key insights") ||
-    key.includes("conversion diagnosis") ||
+    key.includes("strengths") ||
+    key.includes("weaknesses") ||
     key.includes("opportunities") ||
-    key.includes("recommended actions")
+    key.includes("threats") ||
+    key.includes("recommendations")
   );
 }
 
 function bulletPanelStyles(title: string) {
   const key = title.toLowerCase();
 
-  if (key.includes("recommended actions")) {
+  if (key.includes("recommendations")) {
     return {
       badge: "Action",
       badgeClass:
@@ -205,14 +255,36 @@ function bulletPanelStyles(title: string) {
     };
   }
 
-  if (key.includes("conversion diagnosis")) {
+  if (key.includes("weaknesses")) {
     return {
-      badge: "Diagnosis",
+      badge: "Weakness",
       badgeClass:
         "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200",
       bulletClass:
         "border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white",
       dotClass: "bg-rose-500",
+    };
+  }
+
+  if (key.includes("threats")) {
+    return {
+      badge: "Threat",
+      badgeClass:
+        "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200",
+      bulletClass:
+        "border-orange-200 bg-gradient-to-br from-orange-50 via-white to-white",
+      dotClass: "bg-orange-500",
+    };
+  }
+
+  if (key.includes("strengths")) {
+    return {
+      badge: "Strength",
+      badgeClass:
+        "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200",
+      bulletClass:
+        "border-teal-200 bg-gradient-to-br from-teal-50 via-white to-white",
+      dotClass: "bg-teal-500",
     };
   }
 
@@ -301,6 +373,11 @@ export default async function ClientDetailPage({
             Report generation becomes available once this website has been
             approved.
           </p>
+          <ServiceCta
+            variant="analyticsSetup"
+            clientName={client.name}
+            className="mt-4"
+          />
         </div>
       )}
 
@@ -309,7 +386,13 @@ export default async function ClientDetailPage({
 
         <div className="mt-4 space-y-4">
           {reports.length === 0 ? (
-            <p className="text-gray-500">No reports yet.</p>
+            <div className="space-y-4">
+              <p className="text-gray-500">No reports yet.</p>
+              <ServiceCta
+                variant="analyticsSetup"
+                clientName={client.name}
+              />
+            </div>
           ) : (
             reports.map(
               (report: {
@@ -323,6 +406,9 @@ export default async function ClientDetailPage({
                 conversions: number | null;
                 notes: string | null;
                 ai_summary: string | null;
+                channel_performance?: unknown[] | null;
+                landing_page_performance?: unknown[] | null;
+                device_performance?: unknown[] | null;
               }) => (
                 <details
                   key={report.id}
@@ -362,6 +448,9 @@ export default async function ClientDetailPage({
                             engagementRate={report.engagement_rate}
                             conversions={report.conversions}
                             notes={report.notes}
+                            channelPerformance={report.channel_performance}
+                            landingPagePerformance={report.landing_page_performance}
+                            devicePerformance={report.device_performance}
                             clientName={client.name}
                           />
                           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 transition group-open:rotate-180 md:h-10 md:w-10">
@@ -499,10 +588,18 @@ export default async function ClientDetailPage({
                                 engagementRate={report.engagement_rate}
                                 conversions={report.conversions}
                                 notes={report.notes}
+                                channelPerformance={report.channel_performance}
+                                landingPagePerformance={report.landing_page_performance}
+                                devicePerformance={report.device_performance}
                               />
                               </>
                             )}
                           </div>
+                          <ServiceCta
+                            variant="reportFix"
+                            clientName={client.name}
+                            className="mt-5"
+                          />
                         </div>
                         </div>
                       </>

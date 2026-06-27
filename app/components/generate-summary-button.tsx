@@ -14,6 +14,9 @@ type Props = {
   engagementRate: number | null;
   conversions: number | null;
   notes: string | null;
+  channelPerformance?: unknown[] | null;
+  landingPagePerformance?: unknown[] | null;
+  devicePerformance?: unknown[] | null;
   className?: string;
   iconOnly?: boolean;
 };
@@ -28,6 +31,9 @@ export default function GenerateSummaryButton({
   engagementRate,
   conversions,
   notes,
+  channelPerformance,
+  landingPagePerformance,
+  devicePerformance,
   className = "",
   iconOnly = false,
 }: Props) {
@@ -51,6 +57,9 @@ export default function GenerateSummaryButton({
         bounceRate,
         engagementRate,
         conversions,
+        channelPerformance,
+        landingPagePerformance,
+        devicePerformance,
         notes,
       }),
     });

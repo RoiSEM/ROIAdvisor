@@ -65,6 +65,7 @@ export default async function EditClientPage({
         initialName={client.name || ""}
         initialWebsite={client.website || ""}
         initialEmail={client.email || ""}
+        initialLogoUrl={client.logo_url || ""}
         initialPortalUserId={client.user_id || ""}
         initialGa4PropertyId={client.ga4_property_id || ""}
         initialPrimaryGoal={client.primary_goal || ""}
@@ -75,6 +76,11 @@ export default async function EditClientPage({
         initialMainCta={client.main_cta || ""}
         initialFunnelDescription={client.funnel_description || ""}
         initialKnownIssues={client.known_issues || ""}
+        initialTechnicalIssues={client.technical_issues || ""}
+        initialDesignConcerns={client.design_concerns || ""}
+        initialAdChannelNotes={client.ad_channel_notes || ""}
+        initialOfferMessageConcerns={client.offer_message_concerns || ""}
+        initialTrackingNotes={client.tracking_notes || ""}
         initialMarketingChannels={client.marketing_channels || []}
         initialRunningAds={client.running_ads}
         initialClientNotes={client.client_notes || ""}

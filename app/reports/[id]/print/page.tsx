@@ -3,7 +3,10 @@ import { supabase } from "@/lib/supabase-server";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import PrintPageButton from "@/components/print-page-button";
+import ServiceCta from "@/components/service-cta";
 import { buildPreviewSummary, getReportHealthScore } from "@/lib/report-summary";
+
+export const dynamic = "force-dynamic";
 
 function formatReportMonth(value: string | null) {
   if (!value) return "No month set";
@@ -51,7 +54,7 @@ function splitSummarySections(markdown: string | null) {
   let currentLines: string[] = [];
 
   const pushSection = () => {
-    const content = currentLines.join("\n").trim();
+    const content = cleanSectionContent(currentLines.join("\n"));
 
     if (!currentTitle && !content) return;
 
@@ -70,7 +73,8 @@ function splitSummarySections(markdown: string | null) {
 
     if (!inCodeFence && /^##\s+/.test(line)) {
       pushSection();
-      currentTitle = line.replace(/^##\s+/, "").trim() || "Summary";
+      currentTitle =
+        normalizeSectionTitle(line.replace(/^##\s+/, "").trim()) || "Summary";
       currentLines = [];
       continue;
     }
@@ -80,19 +84,66 @@ function splitSummarySections(markdown: string | null) {
 
   pushSection();
 
-  return sections.filter(
-    (section) => section.title.trim() || section.content.trim(),
-  );
+  return sections.filter((section) => section.content.trim());
+}
+
+function normalizeSectionTitle(title: string) {
+  const key = title.toLowerCase();
+
+  if (key.includes("performance summary")) {
+    return "Summary Insights & Performance Summary";
+  }
+
+  if (key.includes("key insights")) {
+    return "Strengths: What's Working";
+  }
+
+  if (key.includes("conversion diagnosis")) {
+    return "Weaknesses: What's Not Working";
+  }
+
+  if (key === "opportunities" || key.includes("where to improve")) {
+    return "Opportunities: Where to Improve";
+  }
+
+  if (key.includes("threats") || key.includes("watch out")) {
+    return "Threats: Watch Out For";
+  }
+
+  if (key.includes("recommended actions") || key.includes("recommendations")) {
+    return "Recommendations";
+  }
+
+  return title;
+}
+
+function cleanSectionContent(content: string) {
+  return content
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+
+      return ![
+        /^secondary contributing issues include:\s*$/i,
+        /^primary contributing issues include:\s*$/i,
+        /^additional considerations include:\s*$/i,
+        /^supporting issues include:\s*$/i,
+      ].some((pattern) => pattern.test(trimmed));
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function sectionIcon(title: string) {
   const key = title.toLowerCase();
 
-  if (key.includes("performance summary")) return "📊";
-  if (key.includes("key insights")) return "💡";
-  if (key.includes("conversion diagnosis")) return "🩺";
+  if (key.includes("summary insights")) return "📊";
+  if (key.includes("strengths")) return "✅";
+  if (key.includes("weaknesses")) return "⚠️";
   if (key.includes("opportunities")) return "🚀";
-  if (key.includes("recommended actions")) return "✅";
+  if (key.includes("threats")) return "🛡️";
+  if (key.includes("recommendations")) return "➡️";
 
   return "•";
 }
@@ -112,8 +163,8 @@ function extractBulletItems(content: string) {
       continue;
     }
 
-    if (!inCodeFence && /^[-*]\s+/.test(trimmed)) {
-      bullets.push(trimmed.replace(/^[-*]\s+/, "").trim());
+    if (!inCodeFence && /^(?:[-*]|\d+\.)\s+/.test(trimmed)) {
+      bullets.push(trimmed.replace(/^(?:[-*]|\d+\.)\s+/, "").trim());
       continue;
     }
 
@@ -130,17 +181,18 @@ function supportsBulletPanel(title: string) {
   const key = title.toLowerCase();
 
   return (
-    key.includes("key insights") ||
-    key.includes("conversion diagnosis") ||
+    key.includes("strengths") ||
+    key.includes("weaknesses") ||
     key.includes("opportunities") ||
-    key.includes("recommended actions")
+    key.includes("threats") ||
+    key.includes("recommendations")
   );
 }
 
 function bulletPanelStyles(title: string) {
   const key = title.toLowerCase();
 
-  if (key.includes("recommended actions")) {
+  if (key.includes("recommendations")) {
     return {
       badge: "Action",
       badgeClass:
@@ -162,14 +214,36 @@ function bulletPanelStyles(title: string) {
     };
   }
 
-  if (key.includes("conversion diagnosis")) {
+  if (key.includes("weaknesses")) {
     return {
-      badge: "Diagnosis",
+      badge: "Weakness",
       badgeClass:
         "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200",
       bulletClass:
         "border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white",
       dotClass: "bg-rose-500",
+    };
+  }
+
+  if (key.includes("threats")) {
+    return {
+      badge: "Threat",
+      badgeClass:
+        "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200",
+      bulletClass:
+        "border-orange-200 bg-gradient-to-br from-orange-50 via-white to-white",
+      dotClass: "bg-orange-500",
+    };
+  }
+
+  if (key.includes("strengths")) {
+    return {
+      badge: "Strength",
+      badgeClass:
+        "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200",
+      bulletClass:
+        "border-teal-200 bg-gradient-to-br from-teal-50 via-white to-white",
+      dotClass: "bg-teal-500",
     };
   }
 
@@ -227,8 +301,8 @@ export async function generateMetadata({
           ? `${client.name} Print Report - ${reportMonth}`
           : `${client.name} Print Report`,
         description: reportMonth
-          ? `Printable monthly SEO report for ${client.name} for ${reportMonth}.`
-          : `Printable monthly SEO report for ${client.name}.`,
+          ? `Printable monthly conversion performance report for ${client.name} for ${reportMonth}.`
+          : `Printable monthly conversion performance report for ${client.name}.`,
       };
     }
 
@@ -335,8 +409,17 @@ export default async function PrintReportPage({
             )}
           </div>
 
-          <div className="flex h-16 w-40 items-center justify-center border border-slate-300 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
-            Logo
+          <div className="flex h-20 w-44 items-center justify-center border border-slate-300 bg-white p-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+            {client?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={client.logo_url}
+                alt={`${client?.name || "Client"} logo`}
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              "Logo"
+            )}
           </div>
         </div>
       </section>
@@ -379,6 +462,14 @@ export default async function PrintReportPage({
                   {healthScore.score}/100
                 </p>
               </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ring-1 ring-inset ring-slate-200">
+                  Grade {healthScore.grade}
+                </span>
+                <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ring-1 ring-inset ring-slate-200">
+                  {healthScore.mode} Mode
+                </span>
+              </div>
             </div>
 
             <div className="max-w-2xl">
@@ -407,9 +498,7 @@ export default async function PrintReportPage({
 
       <section className="print-section mt-10">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold">
-            Summary & Insights
-          </h2>
+          <h2 className="text-xl font-semibold">Strategic Analysis</h2>
           {!hasAiSummary && (
             <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
               Preview
@@ -495,6 +584,10 @@ export default async function PrintReportPage({
             </div>
           )}
         </div>
+      </section>
+
+      <section className="print-section mt-10">
+        <ServiceCta variant="contactPage" clientName={client?.name} />
       </section>
 
       <footer className="print-section mt-12 border-t border-slate-200 pt-4 text-xs">

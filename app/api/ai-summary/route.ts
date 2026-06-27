@@ -31,6 +31,9 @@ export async function POST(req: Request) {
       bounceRate,
       engagementRate,
       conversions,
+      channelPerformance,
+      landingPagePerformance,
+      devicePerformance,
       notes,
     } = body;
 
@@ -74,6 +77,15 @@ export async function POST(req: Request) {
       bounce_rate: bounceRate ?? null,
       engagement_rate: engagementRate ?? null,
       conversions: conversions ?? null,
+      channel_performance: Array.isArray(channelPerformance)
+        ? channelPerformance
+        : null,
+      landing_page_performance: Array.isArray(landingPagePerformance)
+        ? landingPagePerformance
+        : null,
+      device_performance: Array.isArray(devicePerformance)
+        ? devicePerformance
+        : null,
       notes: notes ?? null,
     };
 
@@ -88,7 +100,7 @@ export async function POST(req: Request) {
         {
           role: "system",
           content:
-            "You are a senior digital marketing strategist, conversion analyst, and agency owner with over 20 years of experience scaling and selling multiple agencies. Your advice is direct, honest, and focused on what actually drives revenue. You do not sugarcoat issues or hide behind vague language. You prioritize strong foundational fixes over surface-level optimizations, and you communicate like a trusted advisor who wants the client to succeed long-term. You speak clearly, confidently, and professionally, with enough bluntness to cut through ambiguity and drive action.\n\nGuidelines:\n- Always prioritize conversion performance over raw traffic metrics\n- If conversions are 0, treat this as a critical issue and diagnose likely causes\n- Distinguish between confirmed issues and missing or uncertain data\n- If tracking, CTA, or funnel details are missing, say they are not confirmed and do not assume\n- Do not simply describe metrics; explain what they mean for the business\n- Clearly identify the single primary conversion blocker when one is evident\n- Prioritize issues that directly block conversions over analytics limitations\n- Provide actionable, prioritized recommendations\n- Keep tone professional, clear, strategic, and client-friendly\n- Avoid generic or vague statements\n\nYour output should read like a seasoned agency owner and strategic consultant, not a data reporter.",
+            "You are a senior digital marketing strategist, conversion analyst, and agency owner with over 20 years of experience scaling and selling multiple agencies. Your advice is direct, honest, and focused on what actually drives revenue. You evaluate traffic quality, page experience, technical reliability, offer clarity, channel fit, tracking confidence, and conversion outcomes through a SWOT-style lens. You communicate like a trusted advisor who wants the client to succeed long-term.\n\nGuidelines:\n- Prioritize conversion performance, lead quality, revenue impact, and data confidence over raw traffic metrics\n- Treat SEO, ads, design, and technical issues only as conversion factors; do not evaluate them for their own sake\n- If conversions are 0, treat this as a critical issue and diagnose likely causes\n- If conversion performance is strong, do not describe the funnel as broken unless a confirmed issue supports that\n- Distinguish confirmed issues from missing or uncertain data\n- If tracking, CTA, funnel, technical, design, or channel details are missing, say they are not confirmed and do not assume\n- Do not simply describe metrics; explain what they mean for the business\n- Identify a primary conversion issue only when one is evident\n- Prioritize issues that directly affect conversions over surface-level observations\n- Make recommendations specific, prioritized, and tied to the report mode, grade, and SWOT evidence\n- Keep tone professional, clear, strategic, and client-friendly\n- Avoid generic or vague statements\n\nYour output should read like a seasoned agency owner and strategic consultant, not a data reporter.",
         },
         {
           role: "user",
@@ -96,7 +108,7 @@ export async function POST(req: Request) {
         },
       ],
       temperature: 0.7,
-      max_tokens: 1000,
+      max_tokens: 1400,
     });
 
     const summary = completion.choices[0]?.message?.content?.trim();

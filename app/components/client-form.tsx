@@ -1,5 +1,6 @@
 "use client";
 
+import ServiceCta from "@/components/service-cta";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -8,6 +9,7 @@ type ClientFormProps = {
   initialName?: string;
   initialWebsite?: string;
   initialEmail?: string;
+  initialLogoUrl?: string;
   initialPortalUserId?: string;
   initialGa4PropertyId?: string;
   initialPrimaryGoal?: string;
@@ -18,6 +20,11 @@ type ClientFormProps = {
   initialMainCta?: string;
   initialFunnelDescription?: string;
   initialKnownIssues?: string;
+  initialTechnicalIssues?: string;
+  initialDesignConcerns?: string;
+  initialAdChannelNotes?: string;
+  initialOfferMessageConcerns?: string;
+  initialTrackingNotes?: string;
   initialMarketingChannels?: string[] | null;
   initialRunningAds?: boolean | null;
   initialClientNotes?: string;
@@ -170,6 +177,7 @@ export default function ClientForm({
   initialName = "",
   initialWebsite = "",
   initialEmail = "",
+  initialLogoUrl = "",
   initialPortalUserId = "",
   initialGa4PropertyId = "",
   initialPrimaryGoal = "",
@@ -180,6 +188,11 @@ export default function ClientForm({
   initialMainCta = "",
   initialFunnelDescription = "",
   initialKnownIssues = "",
+  initialTechnicalIssues = "",
+  initialDesignConcerns = "",
+  initialAdChannelNotes = "",
+  initialOfferMessageConcerns = "",
+  initialTrackingNotes = "",
   initialMarketingChannels = [],
   initialRunningAds = null,
   initialClientNotes = "",
@@ -193,6 +206,7 @@ export default function ClientForm({
   const [name, setName] = useState(initialName);
   const [website, setWebsite] = useState(initialWebsite);
   const [email, setEmail] = useState(initialEmail);
+  const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
   const [portalUserId, setPortalUserId] = useState(initialPortalUserId);
   const [ga4PropertyId, setGa4PropertyId] = useState(initialGa4PropertyId);
   const [primaryGoal, setPrimaryGoal] = useState(initialPrimaryGoal);
@@ -269,6 +283,13 @@ export default function ClientForm({
     getGuidedValue(initialKnownIssues, "What seems broken") ||
       (!initialKnownIssues.startsWith("- ") ? initialKnownIssues : ""),
   );
+  const [technicalIssues, setTechnicalIssues] = useState(initialTechnicalIssues);
+  const [designConcerns, setDesignConcerns] = useState(initialDesignConcerns);
+  const [adChannelNotes, setAdChannelNotes] = useState(initialAdChannelNotes);
+  const [offerMessageConcerns, setOfferMessageConcerns] = useState(
+    initialOfferMessageConcerns,
+  );
+  const [trackingNotes, setTrackingNotes] = useState(initialTrackingNotes);
   const [marketingChannels, setMarketingChannels] = useState<string[]>(
     normalizeMarketingChannels(initialMarketingChannels),
   );
@@ -310,6 +331,32 @@ export default function ClientForm({
     setter([...current, value]);
   }
 
+  function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      alert("Please choose a PNG or JPG logo.");
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setLogoUrl(reader.result);
+      }
+    };
+
+    reader.onerror = () => {
+      alert("Failed to read logo file.");
+    };
+
+    reader.readAsDataURL(file);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -324,6 +371,7 @@ export default function ClientForm({
             name,
             website,
             email,
+            logo_url: logoUrl || null,
             user_id: portalUserId || null,
             approval_status: approvalStatus,
             approval_notes: approvalNotes || null,
@@ -351,6 +399,11 @@ export default function ClientForm({
                 ["Conversion friction", conversionFriction],
                 ["What seems broken", internalIssue],
               ]) || null,
+            technical_issues: technicalIssues || null,
+            design_concerns: designConcerns || null,
+            ad_channel_notes: adChannelNotes || null,
+            offer_message_concerns: offerMessageConcerns || null,
+            tracking_notes: trackingNotes || null,
             marketing_channels: marketingChannels,
             running_ads: runningAds === "" ? null : runningAds === "yes",
             client_notes: clientNotes || null,
@@ -369,6 +422,7 @@ export default function ClientForm({
         setName("");
         setWebsite("");
         setEmail("");
+        setLogoUrl("");
         setPortalUserId("");
         setGa4PropertyId("");
         setPrimaryGoal("");
@@ -385,6 +439,11 @@ export default function ClientForm({
         setGrowthSource("");
         setTopConcern("");
         setInternalIssue("");
+        setTechnicalIssues("");
+        setDesignConcerns("");
+        setAdChannelNotes("");
+        setOfferMessageConcerns("");
+        setTrackingNotes("");
         setMarketingChannels([]);
         setRunningAds("");
         setClientNotes("");
@@ -447,6 +506,56 @@ export default function ClientForm({
           </div>
         </div>
 
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px]">
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Report Logo URL
+            </label>
+            <input
+              type="text"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              placeholder="https://example.com/logo.png or upload below"
+            />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={handleLogoFileChange}
+                className="text-sm"
+              />
+              {logoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setLogoUrl("")}
+                  className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium transition hover:bg-slate-50"
+                >
+                  Remove logo
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Optional. Upload a PNG/JPG or paste a public image URL.
+            </p>
+          </div>
+
+          <div className="flex min-h-24 items-center justify-center rounded border border-slate-200 bg-slate-50 p-3">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={`${name || "Client"} logo preview`}
+                className="max-h-20 max-w-full object-contain"
+              />
+            ) : (
+              <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                Logo Preview
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className={`grid gap-3 ${isAdmin ? "md:grid-cols-2" : ""}`}>
           {isAdmin && (
             <div>
@@ -486,6 +595,12 @@ export default function ClientForm({
             </p>
           </div>
         </div>
+
+        <ServiceCta
+          variant="analyticsSetup"
+          clientName={name}
+          className="mt-2"
+        />
       </section>
 
       {isAdmin && isEditMode && (
@@ -514,6 +629,12 @@ export default function ClientForm({
               <li>Confirm the numeric GA4 Property ID is saved above.</li>
             </ol>
           </div>
+
+          <ServiceCta
+            variant="trackingConfidence"
+            clientName={name}
+            className="border-amber-200 bg-amber-50"
+          />
 
           <div>
             <label className="mb-1 block text-sm font-medium">
@@ -853,6 +974,73 @@ export default function ClientForm({
             className="w-full rounded border px-3 py-2"
             rows={3}
             placeholder="Example: Ads are running but no leads are coming in."
+          />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Known technical issues
+            </label>
+            <textarea
+              value={technicalIssues}
+              onChange={(e) => setTechnicalIssues(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              rows={3}
+              placeholder="Broken forms, phone links, checkout, booking flow, tracking, mobile bugs..."
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Design or layout concerns
+            </label>
+            <textarea
+              value={designConcerns}
+              onChange={(e) => setDesignConcerns(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              rows={3}
+              placeholder="CTA visibility, confusing layout, weak landing page, trust signals, mobile layout..."
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Ad or channel notes
+            </label>
+            <textarea
+              value={adChannelNotes}
+              onChange={(e) => setAdChannelNotes(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              rows={3}
+              placeholder="Campaign changes, poor lead quality, channels to scale, budget concerns..."
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Offer or messaging concerns
+            </label>
+            <textarea
+              value={offerMessageConcerns}
+              onChange={(e) => setOfferMessageConcerns(e.target.value)}
+              className="w-full rounded border px-3 py-2"
+              rows={3}
+              placeholder="Unclear value prop, pricing objections, offer mismatch, weak proof..."
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            Tracking confidence or known tracking issues
+          </label>
+          <textarea
+            value={trackingNotes}
+            onChange={(e) => setTrackingNotes(e.target.value)}
+            className="w-full rounded border px-3 py-2"
+            rows={3}
+            placeholder="Events missing, duplicate conversions, forms/calls not tracked, setup recently changed..."
           />
         </div>
 

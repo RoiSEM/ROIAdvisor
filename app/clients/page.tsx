@@ -1,4 +1,5 @@
 import ClientForm from "@/components/client-form";
+import ServiceCta from "@/components/service-cta";
 import SiteHeaderNav from "@/components/site-header-nav";
 import SignOutButton from "@/components/sign-out-button";
 import { getBillingSnapshot } from "@/lib/billing";
@@ -176,6 +177,11 @@ export default async function ClientsPage() {
           </div>
         )}
 
+        <ServiceCta
+          variant="analyticsSetup"
+          className="bg-white/80 backdrop-blur"
+        />
+
         {canCreateSite && (
           <details
             id="add-website"
@@ -306,6 +312,11 @@ export default async function ClientsPage() {
                     Learn how it works
                   </Link>
                 </div>
+                <ServiceCta
+                  variant="analyticsSetup"
+                  compact
+                  className="mt-4"
+                />
               </div>
             </div>
           )}

@@ -15,6 +15,9 @@ type Props = {
   engagementRate: number | null;
   conversions: number | null;
   notes: string | null;
+  channelPerformance?: unknown[] | null;
+  landingPagePerformance?: unknown[] | null;
+  devicePerformance?: unknown[] | null;
   clientName: string;
 };
 
@@ -29,6 +32,9 @@ export default function ReportHeaderActions({
   engagementRate,
   conversions,
   notes,
+  channelPerformance,
+  landingPagePerformance,
+  devicePerformance,
   clientName,
 }: Props) {
   return (
@@ -44,6 +50,9 @@ export default function ReportHeaderActions({
           engagementRate={engagementRate}
           conversions={conversions}
           notes={notes}
+          channelPerformance={channelPerformance}
+          landingPagePerformance={landingPagePerformance}
+          devicePerformance={devicePerformance}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10"
           iconOnly
         />
@@ -57,6 +66,9 @@ export default function ReportHeaderActions({
       />
       <a
         href={`/reports/${reportId}/print`}
+        onClick={(event) => {
+          event.currentTarget.href = `/reports/${reportId}/print?print=${Date.now()}`;
+        }}
         aria-label="Print view"
         title="Print view"
         className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10"

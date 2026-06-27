@@ -13,6 +13,9 @@ type Props = {
   engagementRate: number | null;
   conversions: number | null;
   notes: string | null;
+  channelPerformance?: unknown[] | null;
+  landingPagePerformance?: unknown[] | null;
+  devicePerformance?: unknown[] | null;
 };
 
 export default function RegenerateSummaryButton({
@@ -25,6 +28,9 @@ export default function RegenerateSummaryButton({
   engagementRate,
   conversions,
   notes,
+  channelPerformance,
+  landingPagePerformance,
+  devicePerformance,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -46,6 +52,9 @@ export default function RegenerateSummaryButton({
         bounceRate,
         engagementRate,
         conversions,
+        channelPerformance,
+        landingPagePerformance,
+        devicePerformance,
         notes,
       }),
     });

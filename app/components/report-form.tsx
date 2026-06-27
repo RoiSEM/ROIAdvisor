@@ -1,6 +1,7 @@
 "use client";
 
 import { ReportDatePicker } from "@/components/calendar";
+import ServiceCta from "@/components/service-cta";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -143,6 +144,9 @@ export default function ReportForm({ clientId }: { clientId: string }) {
           bounceRate: syncData.bounceRate,
           engagementRate: syncData.engagementRate,
           conversions: syncData.conversions,
+          channelPerformance: syncData.channelPerformance,
+          landingPagePerformance: syncData.landingPagePerformance,
+          devicePerformance: syncData.devicePerformance,
           notes,
         }),
       });
@@ -232,6 +236,8 @@ export default function ReportForm({ clientId }: { clientId: string }) {
 
           {loading && <p className="text-sm">{status}</p>}
         </div>
+
+        <ServiceCta variant="trackingConfidence" />
       </div>
     </form>
   );

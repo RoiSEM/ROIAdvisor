@@ -1,6 +1,12 @@
 import { getRequestUser, isAdminUser, supabaseAdmin } from "@/lib/supabase-server";
 import { buildPreviewSummary, getReportHealthScore } from "@/lib/report-summary";
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFImage,
+} from "pdf-lib";
 
 function formatReportMonth(value: string | null) {
   if (!value) return "No month set";
@@ -33,7 +39,7 @@ function splitSummarySections(markdown: string | null) {
   let currentLines: string[] = [];
 
   const pushSection = () => {
-    const content = currentLines.join("\n").trim();
+    const content = cleanSectionContent(currentLines.join("\n"));
 
     if (!currentTitle && !content) return;
 
@@ -52,7 +58,8 @@ function splitSummarySections(markdown: string | null) {
 
     if (!inCodeFence && /^##\s+/.test(line)) {
       pushSection();
-      currentTitle = line.replace(/^##\s+/, "").trim() || "Summary";
+      currentTitle =
+        normalizeSectionTitle(line.replace(/^##\s+/, "").trim()) || "Summary";
       currentLines = [];
       continue;
     }
@@ -62,9 +69,55 @@ function splitSummarySections(markdown: string | null) {
 
   pushSection();
 
-  return sections.filter(
-    (section) => section.title.trim() || section.content.trim(),
-  );
+  return sections.filter((section) => section.content.trim());
+}
+
+function normalizeSectionTitle(title: string) {
+  const key = title.toLowerCase();
+
+  if (key.includes("performance summary")) {
+    return "Summary Insights & Performance Summary";
+  }
+
+  if (key.includes("key insights")) {
+    return "Strengths: What's Working";
+  }
+
+  if (key.includes("conversion diagnosis")) {
+    return "Weaknesses: What's Not Working";
+  }
+
+  if (key === "opportunities" || key.includes("where to improve")) {
+    return "Opportunities: Where to Improve";
+  }
+
+  if (key.includes("threats") || key.includes("watch out")) {
+    return "Threats: Watch Out For";
+  }
+
+  if (key.includes("recommended actions") || key.includes("recommendations")) {
+    return "Recommendations";
+  }
+
+  return title;
+}
+
+function cleanSectionContent(content: string) {
+  return content
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+
+      return ![
+        /^secondary contributing issues include:\s*$/i,
+        /^primary contributing issues include:\s*$/i,
+        /^additional considerations include:\s*$/i,
+        /^supporting issues include:\s*$/i,
+      ].some((pattern) => pattern.test(trimmed));
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function extractBulletItems(content: string) {
@@ -81,8 +134,8 @@ function extractBulletItems(content: string) {
       continue;
     }
 
-    if (!inCodeFence && /^[-*]\s+/.test(trimmed)) {
-      bullets.push(trimmed.replace(/^[-*]\s+/, "").trim());
+    if (!inCodeFence && /^(?:[-*]|\d+\.)\s+/.test(trimmed)) {
+      bullets.push(trimmed.replace(/^(?:[-*]|\d+\.)\s+/, "").trim());
       continue;
     }
 
@@ -151,6 +204,88 @@ function estimateTextHeight(
   return Math.max(lineHeight, lines.length * lineHeight);
 }
 
+async function embedLogoImage(
+  pdfDoc: PDFDocument,
+  logoUrl: string | null | undefined,
+) {
+  if (!logoUrl) return null;
+
+  try {
+    const dataUrlMatch = logoUrl.match(
+      /^data:(image\/(?:png|jpeg));base64,(.+)$/i,
+    );
+
+    if (dataUrlMatch) {
+      const [, mimeType, base64Data] = dataUrlMatch;
+      const bytes = Uint8Array.from(Buffer.from(base64Data, "base64"));
+
+      if (mimeType.toLowerCase() === "image/png") {
+        return await pdfDoc.embedPng(bytes);
+      }
+
+      return await pdfDoc.embedJpg(bytes);
+    }
+
+    const url = new URL(logoUrl);
+
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return null;
+    }
+
+    const response = await fetch(url, { cache: "no-store" });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type")?.toLowerCase() || "";
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const pathname = url.pathname.toLowerCase();
+
+    if (contentType.includes("png") || pathname.endsWith(".png")) {
+      return await pdfDoc.embedPng(bytes);
+    }
+
+    if (
+      contentType.includes("jpeg") ||
+      contentType.includes("jpg") ||
+      pathname.endsWith(".jpg") ||
+      pathname.endsWith(".jpeg")
+    ) {
+      return await pdfDoc.embedJpg(bytes);
+    }
+
+    return null;
+  } catch (error) {
+    console.warn("Unable to embed report logo:", error);
+    return null;
+  }
+}
+
+function getContainedImageRect(
+  image: PDFImage,
+  box: { x: number; y: number; width: number; height: number },
+) {
+  const scale = Math.min(box.width / image.width, box.height / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+
+  return {
+    x: box.x + (box.width - width) / 2,
+    y: box.y + (box.height - height) / 2,
+    width,
+    height,
+  };
+}
+
+const reportCta = {
+  eyebrow: "PAGE IMPROVEMENT",
+  title: "Get redesign help for your contact page.",
+  description:
+    "Improve CTA clarity, trust signals, form flow, and mobile layout so more visitors become leads.",
+  action: "Email george@roisem.com for contact page help.",
+};
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -217,6 +352,7 @@ export async function GET(
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const logoImage = await embedLogoImage(pdfDoc, client?.logo_url);
 
     const pageSize: [number, number] = [612, 792];
     const margin = 42;
@@ -309,6 +445,75 @@ export async function GET(
       y -= height + 18;
     };
 
+    const drawCtaBlock = () => {
+      const height = 94;
+
+      ensureSpace(height + 18);
+
+      page.drawRectangle({
+        x: margin,
+        y: y - height,
+        width: contentWidth,
+        height,
+        borderColor: colors.border,
+        borderWidth: 1,
+        color: colors.subtle,
+      });
+
+      page.drawText(reportCta.eyebrow, {
+        x: margin + 16,
+        y: y - 20,
+        size: 8,
+        font: boldFont,
+        color: colors.muted,
+      });
+
+      page.drawText(reportCta.title, {
+        x: margin + 16,
+        y: y - 42,
+        size: 14,
+        font: boldFont,
+        color: colors.ink,
+      });
+
+      drawWrappedText(
+        reportCta.description,
+        margin + 16,
+        y - 52,
+        contentWidth - 210,
+        10,
+        font,
+        colors.muted,
+        4,
+      );
+
+      page.drawRectangle({
+        x: pageWidth - margin - 184,
+        y: y - 58,
+        width: 168,
+        height: 28,
+        color: colors.ink,
+      });
+
+      page.drawText("GET CONTACT PAGE HELP", {
+        x: pageWidth - margin - 168,
+        y: y - 48,
+        size: 8,
+        font: boldFont,
+        color: rgb(1, 1, 1),
+      });
+
+      page.drawText(reportCta.action, {
+        x: margin + 16,
+        y: y - 80,
+        size: 9,
+        font,
+        color: colors.muted,
+      });
+
+      y -= height + 18;
+    };
+
     page.drawLine({
       start: { x: margin, y },
       end: { x: pageWidth - margin, y },
@@ -362,23 +567,34 @@ export async function GET(
       );
     }
 
-    page.drawRectangle({
+    const logoBox = {
       x: pageWidth - margin - 120,
       y: pageHeight - margin - 78,
       width: 120,
       height: 54,
+    };
+
+    page.drawRectangle({
+      x: logoBox.x,
+      y: logoBox.y,
+      width: logoBox.width,
+      height: logoBox.height,
       borderColor: colors.border,
       borderWidth: 1,
       color: colors.subtle,
     });
 
-    page.drawText("LOGO", {
-      x: pageWidth - margin - 78,
-      y: pageHeight - margin - 46,
-      size: 12,
-      font: boldFont,
-      color: colors.muted,
-    });
+    if (logoImage) {
+      page.drawImage(logoImage, getContainedImageRect(logoImage, logoBox));
+    } else {
+      page.drawText("LOGO", {
+        x: pageWidth - margin - 78,
+        y: pageHeight - margin - 46,
+        size: 12,
+        font: boldFont,
+        color: colors.muted,
+      });
+    }
 
     y -= 28;
 
@@ -443,8 +659,9 @@ export async function GET(
           : colors.critical;
 
     const healthReasonHeight =
-      estimateTextHeight(healthScore.reason, font, 11, contentWidth - 190, 5) + 12;
-    const healthHeight = Math.max(78, healthReasonHeight + 24);
+      estimateTextHeight(healthScore.reason, font, 11, contentWidth - 240, 5) +
+      12;
+    const healthHeight = Math.max(96, healthReasonHeight + 36);
 
     ensureSpace(healthHeight + 18);
 
@@ -498,8 +715,44 @@ export async function GET(
       color: colors.ink,
     });
 
+    page.drawRectangle({
+      x: margin + 16,
+      y: y - 66,
+      width: 70,
+      height: 18,
+      borderColor: colors.border,
+      borderWidth: 1,
+      color: rgb(1, 1, 1),
+    });
+
+    page.drawText(`GRADE ${healthScore.grade}`, {
+      x: margin + 24,
+      y: y - 59,
+      size: 7,
+      font: boldFont,
+      color: colors.muted,
+    });
+
+    page.drawRectangle({
+      x: margin + 94,
+      y: y - 66,
+      width: 86,
+      height: 18,
+      borderColor: colors.border,
+      borderWidth: 1,
+      color: rgb(1, 1, 1),
+    });
+
+    page.drawText(`${healthScore.mode.toUpperCase()} MODE`, {
+      x: margin + 102,
+      y: y - 59,
+      size: 7,
+      font: boldFont,
+      color: colors.muted,
+    });
+
     page.drawCircle({
-      x: margin + 212,
+      x: margin + 232,
       y: y - 31,
       size: 4,
       color: healthColor,
@@ -507,9 +760,9 @@ export async function GET(
 
     drawWrappedText(
       healthScore.reason,
-      margin + 224,
+      margin + 244,
       y - 20,
-      contentWidth - 240,
+      contentWidth - 260,
       11,
       font,
       colors.ink,
@@ -521,7 +774,7 @@ export async function GET(
     drawSectionTitle("Notes");
     drawParagraphBlock(report.notes || "No notes provided.");
 
-    drawSectionTitle("Summary & Insights");
+    drawSectionTitle("Strategic Analysis");
 
     if (summarySections.length > 0) {
       for (const section of summarySections) {
@@ -603,6 +856,8 @@ export async function GET(
     } else {
       drawParagraphBlock(summaryMarkdown || "No summary available.");
     }
+
+    drawCtaBlock();
 
     ensureSpace(36);
     page.drawLine({

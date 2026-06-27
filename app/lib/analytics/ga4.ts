@@ -8,6 +8,11 @@ export class GoogleAnalyticsConfigError extends Error {
   }
 }
 
+type AnalyticsRow = {
+  metricValues?: Array<{ value?: string | null }> | null;
+  dimensionValues?: Array<{ value?: string | null }> | null;
+};
+
 function getGoogleAnalyticsClient() {
   const inlineCredentials = process.env.GA_SERVICE_ACCOUNT_JSON;
   const credentialsPath = process.env.GA_SERVICE_ACCOUNT_KEY_PATH;
@@ -60,6 +65,21 @@ function getGoogleAnalyticsClient() {
   });
 }
 
+function getMetricValue(
+  row: AnalyticsRow | undefined,
+  index: number,
+) {
+  return Number(row?.metricValues?.[index]?.value || 0);
+}
+
+function getDimensionValue(
+  row: AnalyticsRow | undefined,
+  index: number,
+  fallback = "Unknown",
+) {
+  return row?.dimensionValues?.[index]?.value || fallback;
+}
+
 export async function getGA4Report(
   propertyId: string,
   dateRange?: {
@@ -72,37 +92,99 @@ export async function getGA4Report(
   const startDate = dateRange?.startDate || "30daysAgo";
   const endDate = dateRange?.endDate || "today";
 
-  const [response] = await client.runReport({
-    property: `properties/${propertyId}`,
-    dateRanges: [
-      {
-        startDate,
-        endDate,
-      },
-    ],
-    metrics: [
-      { name: "sessions" },
-      { name: "screenPageViews" },
-      { name: "activeUsers" },
-      { name: "bounceRate" },
-      { name: "engagementRate" },
-      { name: "conversions" },
-    ],
-  });
+  const property = `properties/${propertyId}`;
+  const dateRanges = [{ startDate, endDate }];
 
-  console.log(
-    "GA4 response:",
-    JSON.stringify({ startDate, endDate, response }, null, 2),
-  );
+  const [summaryResponse, channelResponse, landingPageResponse, deviceResponse] =
+    await Promise.all([
+      client.runReport({
+        property,
+        dateRanges,
+        metrics: [
+          { name: "sessions" },
+          { name: "screenPageViews" },
+          { name: "activeUsers" },
+          { name: "bounceRate" },
+          { name: "engagementRate" },
+          { name: "conversions" },
+        ],
+      }),
+      client.runReport({
+        property,
+        dateRanges,
+        dimensions: [
+          { name: "sessionDefaultChannelGroup" },
+          { name: "sessionSourceMedium" },
+        ],
+        metrics: [
+          { name: "sessions" },
+          { name: "activeUsers" },
+          { name: "conversions" },
+          { name: "engagementRate" },
+        ],
+        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+        limit: 8,
+      }),
+      client.runReport({
+        property,
+        dateRanges,
+        dimensions: [{ name: "landingPagePlusQueryString" }],
+        metrics: [
+          { name: "sessions" },
+          { name: "screenPageViews" },
+          { name: "conversions" },
+          { name: "bounceRate" },
+        ],
+        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+        limit: 8,
+      }),
+      client.runReport({
+        property,
+        dateRanges,
+        dimensions: [{ name: "deviceCategory" }],
+        metrics: [
+          { name: "sessions" },
+          { name: "activeUsers" },
+          { name: "conversions" },
+          { name: "engagementRate" },
+        ],
+        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+        limit: 5,
+      }),
+    ]);
 
-  const row = response.rows?.[0];
+  const row = summaryResponse[0].rows?.[0];
 
   return {
-    traffic: Number(row?.metricValues?.[0]?.value || 0),
-    pageViews: Number(row?.metricValues?.[1]?.value || 0),
-    activeUsers: Number(row?.metricValues?.[2]?.value || 0),
-    bounceRate: Number(row?.metricValues?.[3]?.value || 0),
-    engagementRate: Number(row?.metricValues?.[4]?.value || 0),
-    conversions: Number(row?.metricValues?.[5]?.value || 0),
+    traffic: getMetricValue(row, 0),
+    pageViews: getMetricValue(row, 1),
+    activeUsers: getMetricValue(row, 2),
+    bounceRate: getMetricValue(row, 3),
+    engagementRate: getMetricValue(row, 4),
+    conversions: getMetricValue(row, 5),
+    channelPerformance: (channelResponse[0].rows || []).map((channelRow) => ({
+      channel: getDimensionValue(channelRow, 0),
+      sourceMedium: getDimensionValue(channelRow, 1),
+      sessions: getMetricValue(channelRow, 0),
+      activeUsers: getMetricValue(channelRow, 1),
+      conversions: getMetricValue(channelRow, 2),
+      engagementRate: getMetricValue(channelRow, 3),
+    })),
+    landingPagePerformance: (landingPageResponse[0].rows || []).map(
+      (landingRow) => ({
+        landingPage: getDimensionValue(landingRow, 0, "/"),
+        sessions: getMetricValue(landingRow, 0),
+        pageViews: getMetricValue(landingRow, 1),
+        conversions: getMetricValue(landingRow, 2),
+        bounceRate: getMetricValue(landingRow, 3),
+      }),
+    ),
+    devicePerformance: (deviceResponse[0].rows || []).map((deviceRow) => ({
+      device: getDimensionValue(deviceRow, 0),
+      sessions: getMetricValue(deviceRow, 0),
+      activeUsers: getMetricValue(deviceRow, 1),
+      conversions: getMetricValue(deviceRow, 2),
+      engagementRate: getMetricValue(deviceRow, 3),
+    })),
   };
 }
