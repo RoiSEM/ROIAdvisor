@@ -25,6 +25,69 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+aside:has(a[href^="mailto:george@roisem.com?subject="]) {
+  color: #0f172a;
+}
+
+aside:has(a[href^="mailto:george@roisem.com?subject="]) h3 {
+  color: #020617;
+}
+
+aside:has(a[href^="mailto:george@roisem.com?subject="]) p {
+  color: #475569;
+}
+
+aside:has(a[href^="mailto:george@roisem.com?subject="]) > p:first-child {
+  color: #64748b;
+}
+
+a[href^="mailto:george@roisem.com?subject="].rounded-full {
+  color: #0f172a;
+}
+
+a[href^="mailto:george@roisem.com?subject="].rounded-full svg {
+  color: #334155;
+}
+
+@media (prefers-color-scheme: dark) {
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) {
+    border-color: #1e293b;
+    background: #020617;
+    color: #f1f5f9;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) h3 {
+    color: #f8fafc;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) p {
+    color: #cbd5e1;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) > p:first-child {
+    color: #94a3b8;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) a {
+    background: #f8fafc;
+    color: #020617;
+  }
+
+  a[href^="mailto:george@roisem.com?subject="].rounded-full {
+    border-color: #334155;
+    background: #020617;
+    color: #f8fafc;
+  }
+
+  a[href^="mailto:george@roisem.com?subject="].rounded-full:hover {
+    background: #0f172a;
+  }
+
+  a[href^="mailto:george@roisem.com?subject="].rounded-full svg {
+    color: #e2e8f0;
+  }
+}
+
 .details {
   display: flex;
   align-items: flex-start; /* Keeps buttons at the top if the report is long */
@@ -43,6 +106,39 @@ body {
   body {
     background: #fff !important;
     color: #111827 !important;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) {
+    border-color: #e2e8f0 !important;
+    background: #f8fafc !important;
+    color: #0f172a !important;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) h3 {
+    color: #020617 !important;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) p {
+    color: #475569 !important;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) > p:first-child {
+    color: #64748b !important;
+  }
+
+  aside:has(a[href^="mailto:george@roisem.com?subject="]) a {
+    background: #020617 !important;
+    color: #fff !important;
+  }
+
+  a[href^="mailto:george@roisem.com?subject="].rounded-full {
+    border-color: #cbd5e1 !important;
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+
+  a[href^="mailto:george@roisem.com?subject="].rounded-full svg {
+    color: #334155 !important;
   }
 
   .no-print {

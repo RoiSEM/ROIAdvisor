@@ -149,7 +149,7 @@ function extractBulletItems(content: string) {
 }
 
 function sanitizeText(value: string) {
-  return value
+  return pdfSafeText(value)
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/\*(.*?)\*/g, "$1")
@@ -157,6 +157,19 @@ function sanitizeText(value: string) {
     .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
     .replace(/^\s*>\s?/gm, "")
     .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function pdfSafeText(value: string | number | null | undefined) {
+  return String(value ?? "")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[\u2022]/g, "-")
+    .replace(/[\u2713\u2714\u2705]/g, "OK")
+    .replace(/[\u26a0\ufe0f]/g, "!")
+    .replace(/[\ud83d\udcca\ud83d\udcc8\ud83d\udcc9]/g, "")
+    .replace(/[^\n\r\t\x20-\x7e]/g, "")
     .trim();
 }
 
@@ -416,7 +429,7 @@ export async function GET(
 
     const drawSectionTitle = (title: string) => {
       ensureSpace(28);
-      page.drawText(title, {
+      page.drawText(pdfSafeText(title), {
         x: margin,
         y: y - 18,
         size: 18,
@@ -514,6 +527,487 @@ export async function GET(
       y -= height + 18;
     };
 
+    const getReportCardColors = (status: string) => {
+      if (status === "Complete" || status === "Bonus") {
+        return {
+          background: rgb(0.93, 0.98, 0.95),
+          border: rgb(0.66, 0.88, 0.76),
+          text: colors.healthy,
+        };
+      }
+
+      if (status === "Partial") {
+        return {
+          background: rgb(1, 0.97, 0.88),
+          border: rgb(0.94, 0.78, 0.48),
+          text: colors.warning,
+        };
+      }
+
+      if (status === "Penalty") {
+        return {
+          background: rgb(1, 0.93, 0.94),
+          border: rgb(0.94, 0.68, 0.7),
+          text: colors.critical,
+        };
+      }
+
+      return {
+        background: colors.subtle,
+        border: colors.border,
+        text: colors.muted,
+      };
+    };
+
+    const drawReportCardBlock = () => {
+      if (!healthScore.reportCard.length) return;
+
+      const headerHeight = 50;
+
+      ensureSpace(headerHeight + 18);
+
+      page.drawRectangle({
+        x: margin,
+        y: y - headerHeight,
+        width: contentWidth,
+        height: headerHeight,
+        borderColor: colors.border,
+        borderWidth: 1,
+        color: rgb(1, 1, 1),
+      });
+
+      page.drawText("REPORT CARD", {
+        x: margin + 16,
+        y: y - 18,
+        size: 8,
+        font: boldFont,
+        color: colors.muted,
+      });
+
+      page.drawText("Why this grade landed here", {
+        x: margin + 16,
+        y: y - 36,
+        size: 13,
+        font: boldFont,
+        color: colors.ink,
+      });
+
+      const scoreLine = `SETUP ${healthScore.setupScore}/90  PERFORMANCE ${
+        healthScore.performanceAdjustment >= 0 ? "+" : ""
+      }${healthScore.performanceAdjustment}/10`;
+      const scoreLineWidth = font.widthOfTextAtSize(scoreLine, 8);
+
+      page.drawText(scoreLine, {
+        x: pageWidth - margin - 16 - scoreLineWidth,
+        y: y - 27,
+        size: 8,
+        font,
+        color: colors.muted,
+      });
+
+      y -= headerHeight + 12;
+
+      const columnGap = 10;
+      const rowGap = 10;
+      const cardWidth = (contentWidth - columnGap) / 2;
+
+      for (let index = 0; index < healthScore.reportCard.length; index += 2) {
+        const row = healthScore.reportCard.slice(index, index + 2);
+        const rowHeight = Math.max(
+          ...row.map((component) => {
+            const reasonHeight = estimateTextHeight(
+              component.reason,
+              font,
+              8,
+              cardWidth - 24,
+              3,
+            );
+
+            return Math.max(66, reasonHeight + 42);
+          }),
+        );
+
+        ensureSpace(rowHeight + rowGap);
+
+        row.forEach((component, column) => {
+          const x = margin + column * (cardWidth + columnGap);
+          const statusColors = getReportCardColors(component.status);
+
+          page.drawRectangle({
+            x,
+            y: y - rowHeight,
+            width: cardWidth,
+            height: rowHeight,
+            borderColor: colors.border,
+            borderWidth: 1,
+            color: colors.subtle,
+          });
+
+          page.drawText(pdfSafeText(component.label), {
+            x: x + 12,
+            y: y - 16,
+            size: 9,
+            font: boldFont,
+            color: colors.ink,
+          });
+
+          const pointsText = `${component.points}/${component.maxPoints}`;
+          const pointsWidth = boldFont.widthOfTextAtSize(pointsText, 9);
+
+          page.drawText(pointsText, {
+            x: x + cardWidth - 12 - pointsWidth,
+            y: y - 16,
+            size: 9,
+            font: boldFont,
+            color: colors.ink,
+          });
+
+          page.drawRectangle({
+            x: x + 12,
+            y: y - 38,
+            width: 58,
+            height: 16,
+            borderColor: statusColors.border,
+            borderWidth: 1,
+            color: statusColors.background,
+          });
+
+          page.drawText(pdfSafeText(component.status.toUpperCase()), {
+            x: x + 18,
+            y: y - 32,
+            size: 6,
+            font: boldFont,
+            color: statusColors.text,
+          });
+
+          drawWrappedText(
+            component.reason,
+            x + 12,
+            y - 46,
+            cardWidth - 24,
+            8,
+            font,
+            colors.muted,
+            3,
+          );
+        });
+
+        y -= rowHeight + rowGap;
+      }
+
+      y -= 8;
+    };
+
+    const getAnalysisSectionStyle = (title: string) => {
+      const key = title.toLowerCase();
+
+      if (key.includes("recommendations")) {
+        return {
+          icon: "->",
+          badge: "ACTION",
+          background: rgb(0.93, 0.98, 0.95),
+          border: rgb(0.66, 0.88, 0.76),
+          accent: colors.healthy,
+        };
+      }
+
+      if (key.includes("opportunities")) {
+        return {
+          icon: "+",
+          badge: "OPPORTUNITY",
+          background: rgb(0.93, 0.97, 1),
+          border: rgb(0.63, 0.83, 0.96),
+          accent: rgb(0.04, 0.47, 0.72),
+        };
+      }
+
+      if (key.includes("weaknesses")) {
+        return {
+          icon: "!",
+          badge: "WEAKNESS",
+          background: rgb(1, 0.94, 0.96),
+          border: rgb(0.98, 0.72, 0.78),
+          accent: rgb(0.88, 0.12, 0.3),
+        };
+      }
+
+      if (key.includes("threats")) {
+        return {
+          icon: "!",
+          badge: "THREAT",
+          background: rgb(1, 0.96, 0.9),
+          border: rgb(0.96, 0.76, 0.46),
+          accent: rgb(0.76, 0.36, 0.02),
+        };
+      }
+
+      if (key.includes("strengths")) {
+        return {
+          icon: "+",
+          badge: "STRENGTH",
+          background: rgb(0.93, 0.99, 0.98),
+          border: rgb(0.49, 0.91, 0.84),
+          accent: rgb(0.02, 0.68, 0.61),
+        };
+      }
+
+      return {
+        icon: "*",
+        badge: "INSIGHT",
+        background: colors.subtle,
+        border: colors.border,
+        accent: colors.muted,
+      };
+    };
+
+    const supportsAnalysisCards = (title: string) => {
+      const key = title.toLowerCase();
+
+      return (
+        key.includes("strengths") ||
+        key.includes("weaknesses") ||
+        key.includes("opportunities") ||
+        key.includes("threats") ||
+        key.includes("recommendations")
+      );
+    };
+
+    const drawBadge = (
+      label: string,
+      x: number,
+      baselineY: number,
+      style: ReturnType<typeof getAnalysisSectionStyle>,
+    ) => {
+      const badgeWidth = Math.max(
+        54,
+        boldFont.widthOfTextAtSize(label, 7) + 18,
+      );
+
+      page.drawRectangle({
+        x,
+        y: baselineY - 9,
+        width: badgeWidth,
+        height: 16,
+        borderColor: style.border,
+        borderWidth: 1,
+        color: rgb(1, 1, 1),
+      });
+
+      page.drawText(pdfSafeText(label), {
+        x: x + 9,
+        y: baselineY - 3,
+        size: 7,
+        font: boldFont,
+        color: style.accent,
+      });
+    };
+
+    const drawAnalysisSection = (title: string, content: string) => {
+      const { bullets, remainder } = extractBulletItems(content || "");
+      const style = getAnalysisSectionStyle(title);
+      const useCards = supportsAnalysisCards(title) && bullets.length > 0;
+      const sectionPadding = 16;
+      const headerHeight = 42;
+
+      if (!useCards) {
+        const bulletLines = bullets.flatMap((bullet) =>
+          wrapText(`- ${bullet}`, font, 11, contentWidth - 32),
+        );
+        const remainderHeight = remainder
+          ? estimateTextHeight(remainder, font, 11, contentWidth - 32, 5)
+          : 0;
+        const sectionHeight =
+          48 +
+          (bulletLines.length > 0 ? bulletLines.length * 16 + 12 : 0) +
+          (remainderHeight > 0 ? remainderHeight + 8 : 0) +
+          12;
+
+        ensureSpace(sectionHeight);
+
+        page.drawRectangle({
+          x: margin,
+          y: y - sectionHeight,
+          width: contentWidth,
+          height: sectionHeight,
+          borderColor: colors.border,
+          borderWidth: 1,
+          color: rgb(1, 1, 1),
+        });
+
+        page.drawText(pdfSafeText(title), {
+          x: margin + 16,
+          y: y - 24,
+          size: 15,
+          font: boldFont,
+          color: colors.ink,
+        });
+
+        page.drawLine({
+          start: { x: margin + 16, y: y - 34 },
+          end: { x: pageWidth - margin - 16, y: y - 34 },
+          thickness: 1,
+          color: colors.border,
+        });
+
+        let sectionY = y - 48;
+
+        for (const line of bulletLines) {
+          if (line) {
+            page.drawText(line, {
+              x: margin + 16,
+              y: sectionY - 11,
+              size: 11,
+              font,
+              color: colors.ink,
+            });
+          }
+
+          sectionY -= 16;
+        }
+
+        if (bulletLines.length > 0) sectionY -= 4;
+
+        if (remainder) {
+          drawWrappedText(
+            remainder,
+            margin + 16,
+            sectionY,
+            contentWidth - 32,
+            11,
+            font,
+            colors.ink,
+            5,
+          );
+        }
+
+        y -= sectionHeight + 16;
+        return;
+      }
+
+      const columnGap = 10;
+      const rowGap = 12;
+      const cardWidth = (contentWidth - sectionPadding * 2 - columnGap) / 2;
+      const cardHeights = bullets.map((bullet) => {
+        const textHeight = estimateTextHeight(
+          bullet,
+          font,
+          10,
+          cardWidth - 32,
+          5,
+        );
+
+        return Math.max(88, textHeight + 56);
+      });
+      let cardsHeight = 0;
+
+      for (let index = 0; index < cardHeights.length; index += 2) {
+        cardsHeight += Math.max(cardHeights[index], cardHeights[index + 1] ?? 0);
+        if (index + 2 < cardHeights.length) cardsHeight += rowGap;
+      }
+
+      const remainderHeight = remainder
+        ? estimateTextHeight(remainder, font, 10, contentWidth - 32, 5) + 12
+        : 0;
+      const sectionHeight =
+        headerHeight + cardsHeight + remainderHeight + sectionPadding * 2;
+
+      ensureSpace(sectionHeight);
+
+      page.drawRectangle({
+        x: margin,
+        y: y - sectionHeight,
+        width: contentWidth,
+        height: sectionHeight,
+        borderColor: colors.border,
+        borderWidth: 1,
+        color: rgb(1, 1, 1),
+      });
+
+      page.drawText(pdfSafeText(style.icon), {
+        x: margin + 16,
+        y: y - 24,
+        size: 14,
+        font: boldFont,
+        color: style.accent,
+      });
+
+      page.drawText(pdfSafeText(title), {
+        x: margin + 36,
+        y: y - 24,
+        size: 15,
+        font: boldFont,
+        color: colors.ink,
+      });
+
+      page.drawLine({
+        start: { x: margin + 16, y: y - 36 },
+        end: { x: pageWidth - margin - 16, y: y - 36 },
+        thickness: 1,
+        color: colors.border,
+      });
+
+      let sectionY = y - headerHeight - sectionPadding;
+
+      for (let index = 0; index < bullets.length; index += 2) {
+        const row = bullets.slice(index, index + 2);
+        const rowHeight = Math.max(
+          cardHeights[index],
+          cardHeights[index + 1] ?? 0,
+        );
+
+        row.forEach((bullet, column) => {
+          const x = margin + sectionPadding + column * (cardWidth + columnGap);
+
+          page.drawRectangle({
+            x,
+            y: sectionY - rowHeight,
+            width: cardWidth,
+            height: rowHeight,
+            borderColor: style.border,
+            borderWidth: 1,
+            color: style.background,
+          });
+
+          page.drawCircle({
+            x: x + 16,
+            y: sectionY - 22,
+            size: 4,
+            color: style.accent,
+          });
+
+          drawBadge(style.badge, x + 34, sectionY - 18, style);
+
+          drawWrappedText(
+            bullet,
+            x + 34,
+            sectionY - 44,
+            cardWidth - 48,
+            10,
+            font,
+            colors.ink,
+            5,
+          );
+        });
+
+        sectionY -= rowHeight + rowGap;
+      }
+
+      if (remainder) {
+        drawWrappedText(
+          remainder,
+          margin + sectionPadding,
+          sectionY - 4,
+          contentWidth - sectionPadding * 2,
+          10,
+          font,
+          colors.ink,
+          5,
+        );
+      }
+
+      y -= sectionHeight + 16;
+    };
+
     page.drawLine({
       start: { x: margin, y },
       end: { x: pageWidth - margin, y },
@@ -533,7 +1027,7 @@ export async function GET(
 
     y -= 24;
 
-    page.drawText(client?.name || "Client Report", {
+    page.drawText(pdfSafeText(client?.name || "Client Report"), {
       x: margin,
       y: y - 22,
       size: 28,
@@ -543,7 +1037,7 @@ export async function GET(
 
     y -= 34;
 
-    page.drawText(formatReportMonth(report.month), {
+    page.drawText(pdfSafeText(formatReportMonth(report.month)), {
       x: margin,
       y: y - 16,
       size: 16,
@@ -639,7 +1133,7 @@ export async function GET(
           color: colors.muted,
         });
 
-        page.drawText(item.value, {
+        page.drawText(pdfSafeText(item.value), {
           x: x + 12,
           y: y - 44,
           size: 18,
@@ -699,7 +1193,7 @@ export async function GET(
       ),
     });
 
-    page.drawText(healthScore.label.toUpperCase(), {
+    page.drawText(pdfSafeText(healthScore.label.toUpperCase()), {
       x: margin + 24,
       y: y - 33,
       size: 8,
@@ -725,7 +1219,7 @@ export async function GET(
       color: rgb(1, 1, 1),
     });
 
-    page.drawText(`GRADE ${healthScore.grade}`, {
+    page.drawText(pdfSafeText(`GRADE ${healthScore.grade}`), {
       x: margin + 24,
       y: y - 59,
       size: 7,
@@ -743,13 +1237,26 @@ export async function GET(
       color: rgb(1, 1, 1),
     });
 
-    page.drawText(`${healthScore.mode.toUpperCase()} MODE`, {
+    page.drawText(pdfSafeText(`${healthScore.mode.toUpperCase()} MODE`), {
       x: margin + 102,
       y: y - 59,
       size: 7,
       font: boldFont,
       color: colors.muted,
     });
+
+    page.drawText(
+      `SETUP ${healthScore.setupScore}/90  PERFORMANCE ${
+        healthScore.performanceAdjustment >= 0 ? "+" : ""
+      }${healthScore.performanceAdjustment}/10`,
+      {
+        x: margin + 16,
+        y: y - 80,
+        size: 7,
+        font,
+        color: colors.muted,
+      },
+    );
 
     page.drawCircle({
       x: margin + 232,
@@ -771,6 +1278,8 @@ export async function GET(
 
     y -= healthHeight + 18;
 
+    drawReportCardBlock();
+
     drawSectionTitle("Notes");
     drawParagraphBlock(report.notes || "No notes provided.");
 
@@ -778,80 +1287,7 @@ export async function GET(
 
     if (summarySections.length > 0) {
       for (const section of summarySections) {
-        const { bullets, remainder } = extractBulletItems(section.content || "");
-        const bulletLines = bullets.flatMap((bullet) =>
-          wrapText(`• ${bullet}`, font, 11, contentWidth - 32),
-        );
-        const remainderHeight = remainder
-          ? estimateTextHeight(remainder, font, 11, contentWidth - 32, 5)
-          : 0;
-        const sectionHeight =
-          48 +
-          (bulletLines.length > 0 ? bulletLines.length * 16 + 12 : 0) +
-          (remainderHeight > 0 ? remainderHeight + 8 : 0) +
-          12;
-
-        ensureSpace(sectionHeight);
-
-        page.drawRectangle({
-          x: margin,
-          y: y - sectionHeight,
-          width: contentWidth,
-          height: sectionHeight,
-          borderColor: colors.border,
-          borderWidth: 1,
-          color: rgb(1, 1, 1),
-        });
-
-        page.drawText(section.title, {
-          x: margin + 16,
-          y: y - 24,
-          size: 15,
-          font: boldFont,
-          color: colors.ink,
-        });
-
-        page.drawLine({
-          start: { x: margin + 16, y: y - 34 },
-          end: { x: pageWidth - margin - 16, y: y - 34 },
-          thickness: 1,
-          color: colors.border,
-        });
-
-        let sectionY = y - 48;
-
-        if (bulletLines.length > 0) {
-          for (const line of bulletLines) {
-            if (line) {
-              page.drawText(line, {
-                x: margin + 16,
-                y: sectionY - 11,
-                size: 11,
-                font,
-                color: colors.ink,
-              });
-            }
-
-            sectionY -= 16;
-          }
-
-          sectionY -= 4;
-        }
-
-        if (remainder) {
-          sectionY = drawWrappedText(
-            remainder,
-            margin + 16,
-            sectionY,
-            contentWidth - 32,
-            11,
-            font,
-            colors.ink,
-            5,
-          );
-        }
-
-        y -= sectionHeight + 16;
+        drawAnalysisSection(section.title, section.content || "");
       }
     } else {
       drawParagraphBlock(summaryMarkdown || "No summary available.");
@@ -878,7 +1314,7 @@ export async function GET(
     const generatedText = `Generated ${new Date().toLocaleDateString()}`;
     const generatedWidth = font.widthOfTextAtSize(generatedText, 9);
 
-    page.drawText(generatedText, {
+    page.drawText(pdfSafeText(generatedText), {
       x: pageWidth - margin - generatedWidth,
       y: y - 24,
       size: 9,

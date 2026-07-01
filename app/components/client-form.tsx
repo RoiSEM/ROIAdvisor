@@ -16,6 +16,7 @@ type ClientFormProps = {
   initialMonthlyGoal?: number | null;
   initialAverageConversionValue?: number | null;
   initialConversionTypes?: string[] | null;
+  initialKeyEvents?: string[] | null;
   initialConversionTrackingStatus?: string;
   initialMainCta?: string;
   initialFunnelDescription?: string;
@@ -184,6 +185,7 @@ export default function ClientForm({
   initialMonthlyGoal = null,
   initialAverageConversionValue = null,
   initialConversionTypes = [],
+  initialKeyEvents = [],
   initialConversionTrackingStatus = "",
   initialMainCta = "",
   initialFunnelDescription = "",
@@ -218,6 +220,9 @@ export default function ClientForm({
   );
   const [conversionTypes, setConversionTypes] = useState<string[]>(
     initialConversionTypes || [],
+  );
+  const [keyEvents, setKeyEvents] = useState(
+    (initialKeyEvents || []).join("\n"),
   );
   const [conversionTrackingStatus, setConversionTrackingStatus] = useState(
     initialConversionTrackingStatus,
@@ -382,6 +387,10 @@ export default function ClientForm({
               ? Number(averageConversionValue)
               : null,
             conversion_types: conversionTypes,
+            key_events: keyEvents
+              .split(/[\n,]/)
+              .map((value) => value.trim())
+              .filter(Boolean),
             conversion_tracking_status: conversionTrackingStatus || null,
             main_cta: actionLocation || null,
             funnel_description:
@@ -667,7 +676,9 @@ export default function ClientForm({
 
       <section className="space-y-3 border-t pt-5">
         <div>
-          <h2 className="text-lg font-semibold">Goals & Conversions</h2>
+          <h2 className="text-lg font-semibold">
+            Conversion Goals & Tracking
+          </h2>
           <p className="mt-1 text-sm">
             Optional. The more context you add here, the smarter the reports
             get.
@@ -694,14 +705,14 @@ export default function ClientForm({
 
           <div>
             <label className="mb-1 block text-sm font-medium">
-              Monthly Goal
+              Monthly Conversion Goal
             </label>
             <input
               type="number"
               value={monthlyGoal}
               onChange={(e) => setMonthlyGoal(e.target.value)}
               className="w-full rounded border px-3 py-2"
-              placeholder="25"
+              placeholder="25 conversions"
             />
           </div>
 
@@ -744,6 +755,23 @@ export default function ClientForm({
               </label>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            GA4 Key Events
+          </label>
+          <textarea
+            value={keyEvents}
+            onChange={(e) => setKeyEvents(e.target.value)}
+            className="w-full rounded border px-3 py-2"
+            rows={3}
+            placeholder="generate_lead, purchase, phone_call"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Add the key events that should act as purchase or lead indicators.
+            Use one per line or separate them with commas.
+          </p>
         </div>
 
         <div>

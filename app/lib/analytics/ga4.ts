@@ -152,6 +152,17 @@ export async function getGA4Report(
         limit: 5,
       }),
     ]);
+  const [keyEventResponse] = await client.runReport({
+    property,
+    dateRanges,
+    dimensions: [{ name: "eventName" }],
+    metrics: [{ name: "keyEvents" }],
+    orderBys: [{ metric: { metricName: "keyEvents" }, desc: true }],
+    limit: 10,
+  }).catch((error) => {
+    console.warn("Unable to load GA4 key events:", error);
+    return [{ rows: [] }];
+  });
 
   const row = summaryResponse[0].rows?.[0];
 
@@ -185,6 +196,10 @@ export async function getGA4Report(
       activeUsers: getMetricValue(deviceRow, 1),
       conversions: getMetricValue(deviceRow, 2),
       engagementRate: getMetricValue(deviceRow, 3),
+    })),
+    keyEventPerformance: (keyEventResponse.rows || []).map((eventRow) => ({
+      eventName: getDimensionValue(eventRow, 0),
+      keyEvents: getMetricValue(eventRow, 0),
     })),
   };
 }

@@ -23,6 +23,7 @@ async function updateClientWithSchemaFallback(
     "ad_channel_notes",
     "offer_message_concerns",
     "tracking_notes",
+    "key_events",
   ]);
 
   while (true) {
@@ -132,6 +133,7 @@ export async function PATCH(
       monthly_goal,
       average_conversion_value,
       conversion_types,
+      key_events,
       conversion_tracking_status,
       main_cta,
       funnel_description,
@@ -170,6 +172,7 @@ export async function PATCH(
       monthly_goal,
       average_conversion_value,
       conversion_types,
+      key_events,
       conversion_tracking_status,
       main_cta,
       funnel_description,

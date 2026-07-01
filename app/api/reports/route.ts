@@ -19,14 +19,33 @@ async function createReportWithSchemaFallback(payload: {
   client_id: string;
   month: string;
   traffic: number;
+  page_views?: number;
+  active_users?: number;
+  bounce_rate?: number;
+  engagement_rate?: number;
   conversions: number;
+  channel_performance?: unknown;
+  landing_page_performance?: unknown;
+  device_performance?: unknown;
+  key_event_performance?: unknown;
   top_pages: string[];
   notes: string;
   start_date: string;
   end_date: string;
 }) {
   const insertPayload: Record<string, unknown> = { ...payload };
-  const optionalColumns = new Set(["start_date", "end_date"]);
+  const optionalColumns = new Set([
+    "start_date",
+    "end_date",
+    "page_views",
+    "active_users",
+    "bounce_rate",
+    "engagement_rate",
+    "channel_performance",
+    "landing_page_performance",
+    "device_performance",
+    "key_event_performance",
+  ]);
 
   while (true) {
     const { data, error } = await supabaseAdmin
@@ -164,6 +183,12 @@ export async function POST(req: Request) {
     const clientId = body.client_id as string | undefined;
     let planTier: AccountPlan = "free";
     const requestedNotes = typeof body.notes === "string" ? body.notes.trim() : "";
+    const uploadedAnalytics =
+      body.analytics_source === "upload" &&
+      body.uploaded_analytics &&
+      typeof body.uploaded_analytics === "object"
+        ? (body.uploaded_analytics as Record<string, unknown>)
+        : null;
 
     const requestedStartDate = body.start_date as string | undefined;
     const requestedEndDate = body.end_date as string | undefined;
@@ -239,13 +264,56 @@ export async function POST(req: Request) {
       }
     }
 
-    const traffic = Math.floor(Math.random() * 5000) + 500;
-    const conversions = Math.floor(Math.random() * 100) + 5;
-    const topPages = [
-      "/",
-      "/services",
-      "/contact",
-    ];
+    const traffic =
+      typeof uploadedAnalytics?.traffic === "number"
+        ? uploadedAnalytics.traffic
+        : Math.floor(Math.random() * 5000) + 500;
+    const conversions =
+      typeof uploadedAnalytics?.conversions === "number"
+        ? uploadedAnalytics.conversions
+        : Math.floor(Math.random() * 100) + 5;
+    const pageViews =
+      typeof uploadedAnalytics?.pageViews === "number"
+        ? uploadedAnalytics.pageViews
+        : undefined;
+    const activeUsers =
+      typeof uploadedAnalytics?.activeUsers === "number"
+        ? uploadedAnalytics.activeUsers
+        : undefined;
+    const bounceRate =
+      typeof uploadedAnalytics?.bounceRate === "number"
+        ? uploadedAnalytics.bounceRate
+        : undefined;
+    const engagementRate =
+      typeof uploadedAnalytics?.engagementRate === "number"
+        ? uploadedAnalytics.engagementRate
+        : undefined;
+    const channelPerformance = Array.isArray(uploadedAnalytics?.channelPerformance)
+      ? uploadedAnalytics.channelPerformance
+      : undefined;
+    const landingPagePerformance = Array.isArray(
+      uploadedAnalytics?.landingPagePerformance,
+    )
+      ? uploadedAnalytics.landingPagePerformance
+      : undefined;
+    const devicePerformance = Array.isArray(uploadedAnalytics?.devicePerformance)
+      ? uploadedAnalytics.devicePerformance
+      : undefined;
+    const keyEventPerformance = Array.isArray(
+      uploadedAnalytics?.keyEventPerformance,
+    )
+      ? uploadedAnalytics.keyEventPerformance
+      : undefined;
+    const topPages = Array.isArray(landingPagePerformance)
+      ? landingPagePerformance
+          .map((item) =>
+            item && typeof item === "object" && "landingPage" in item
+              ? String(item.landingPage)
+              : null,
+          )
+          .filter((item): item is string => Boolean(item))
+          .slice(0, 5)
+      : ["/", "/services", "/contact"];
 
     const month = `${allowedRange.startDate} to ${allowedRange.endDate}`;
     const systemNote = billingSnapshot.canUseCustomDateRange
@@ -253,13 +321,26 @@ export async function POST(req: Request) {
       : planTier === "starter"
         ? "Starter range applied automatically. Upgrade to Pro for custom dates."
         : "Free range applied automatically. Choose Starter or upgrade for custom dates.";
-    const notes = [requestedNotes, systemNote].filter(Boolean).join("\n\n");
+    const uploadNote = uploadedAnalytics
+      ? "Analytics metrics were imported from an uploaded CSV."
+      : "";
+    const notes = [requestedNotes, uploadNote, systemNote]
+      .filter(Boolean)
+      .join("\n\n");
 
     const { data, error } = await createReportWithSchemaFallback({
       client_id: clientId,
       month,
       traffic,
+      page_views: pageViews,
+      active_users: activeUsers,
+      bounce_rate: bounceRate,
+      engagement_rate: engagementRate,
       conversions,
+      channel_performance: channelPerformance,
+      landing_page_performance: landingPagePerformance,
+      device_performance: devicePerformance,
+      key_event_performance: keyEventPerformance,
       top_pages: topPages,
       notes,
       start_date: allowedRange.startDate,
@@ -292,6 +373,7 @@ export async function POST(req: Request) {
         report: data,
         reports_remaining: reportsRemaining,
         applied_range: allowedRange,
+        analytics_source: uploadedAnalytics ? "upload" : "ga4",
       },
       { status: 201 },
     );

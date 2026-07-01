@@ -17,6 +17,7 @@ type Props = {
   channelPerformance?: unknown[] | null;
   landingPagePerformance?: unknown[] | null;
   devicePerformance?: unknown[] | null;
+  keyEventPerformance?: unknown[] | null;
   className?: string;
   iconOnly?: boolean;
 };
@@ -34,6 +35,7 @@ export default function GenerateSummaryButton({
   channelPerformance,
   landingPagePerformance,
   devicePerformance,
+  keyEventPerformance,
   className = "",
   iconOnly = false,
 }: Props) {
@@ -60,6 +62,7 @@ export default function GenerateSummaryButton({
         channelPerformance,
         landingPagePerformance,
         devicePerformance,
+        keyEventPerformance,
         notes,
       }),
     });

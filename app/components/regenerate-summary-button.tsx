@@ -16,6 +16,7 @@ type Props = {
   channelPerformance?: unknown[] | null;
   landingPagePerformance?: unknown[] | null;
   devicePerformance?: unknown[] | null;
+  keyEventPerformance?: unknown[] | null;
 };
 
 export default function RegenerateSummaryButton({
@@ -31,6 +32,7 @@ export default function RegenerateSummaryButton({
   channelPerformance,
   landingPagePerformance,
   devicePerformance,
+  keyEventPerformance,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -55,6 +57,7 @@ export default function RegenerateSummaryButton({
         channelPerformance,
         landingPagePerformance,
         devicePerformance,
+        keyEventPerformance,
         notes,
       }),
     });

@@ -18,6 +18,7 @@ type Props = {
   channelPerformance?: unknown[] | null;
   landingPagePerformance?: unknown[] | null;
   devicePerformance?: unknown[] | null;
+  keyEventPerformance?: unknown[] | null;
   clientName: string;
 };
 
@@ -35,6 +36,7 @@ export default function ReportHeaderActions({
   channelPerformance,
   landingPagePerformance,
   devicePerformance,
+  keyEventPerformance,
   clientName,
 }: Props) {
   return (
@@ -53,6 +55,7 @@ export default function ReportHeaderActions({
           channelPerformance={channelPerformance}
           landingPagePerformance={landingPagePerformance}
           devicePerformance={devicePerformance}
+          keyEventPerformance={keyEventPerformance}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10"
           iconOnly
         />

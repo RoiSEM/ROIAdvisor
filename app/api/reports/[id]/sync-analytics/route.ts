@@ -18,6 +18,7 @@ async function updateReportAnalyticsWithSchemaFallback(reportId: string, payload
   channel_performance: unknown;
   landing_page_performance: unknown;
   device_performance: unknown;
+  key_event_performance: unknown;
   analytics_synced_at: string;
 }) {
   const updatePayload: Record<string, unknown> = { ...payload };
@@ -26,6 +27,7 @@ async function updateReportAnalyticsWithSchemaFallback(reportId: string, payload
     "channel_performance",
     "landing_page_performance",
     "device_performance",
+    "key_event_performance",
   ]);
 
   while (true) {
@@ -139,6 +141,7 @@ export async function POST(
       channelPerformance,
       landingPagePerformance,
       devicePerformance,
+      keyEventPerformance,
     } = await getGA4Report(client.ga4_property_id, {
         startDate: analyticsReport.start_date ?? null,
         endDate: analyticsReport.end_date ?? null,
@@ -154,6 +157,7 @@ export async function POST(
       channel_performance: channelPerformance,
       landing_page_performance: landingPagePerformance,
       device_performance: devicePerformance,
+      key_event_performance: keyEventPerformance,
       analytics_synced_at: new Date().toISOString(),
     });
 
@@ -175,6 +179,7 @@ export async function POST(
       channelPerformance,
       landingPagePerformance,
       devicePerformance,
+      keyEventPerformance,
     });
   } catch (error) {
     console.error("Sync analytics error:", error);

@@ -72,6 +72,7 @@ export default async function EditClientPage({
         initialMonthlyGoal={client.monthly_goal}
         initialAverageConversionValue={client.average_conversion_value}
         initialConversionTypes={client.conversion_types || []}
+        initialKeyEvents={client.key_events || []}
         initialConversionTrackingStatus={client.conversion_tracking_status || ""}
         initialMainCta={client.main_cta || ""}
         initialFunnelDescription={client.funnel_description || ""}

@@ -196,9 +196,9 @@ function bulletPanelStyles(title: string) {
     return {
       badge: "Action",
       badgeClass:
-        "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+        "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-800 print:bg-emerald-50 print:text-emerald-700 print:ring-emerald-200",
       bulletClass:
-        "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white",
+        "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white text-slate-800 dark:border-emerald-800 dark:from-emerald-950/40 dark:via-slate-950 dark:to-slate-950 dark:text-emerald-50 print:border-emerald-200 print:from-emerald-50 print:via-white print:to-white print:text-slate-800",
       dotClass: "bg-emerald-500",
     };
   }
@@ -207,9 +207,9 @@ function bulletPanelStyles(title: string) {
     return {
       badge: "Opportunity",
       badgeClass:
-        "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200",
+        "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-800 print:bg-sky-50 print:text-sky-700 print:ring-sky-200",
       bulletClass:
-        "border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white",
+        "border-sky-200 bg-gradient-to-br from-sky-50 via-white to-white text-slate-800 dark:border-sky-800 dark:from-sky-950/40 dark:via-slate-950 dark:to-slate-950 dark:text-sky-50 print:border-sky-200 print:from-sky-50 print:via-white print:to-white print:text-slate-800",
       dotClass: "bg-sky-500",
     };
   }
@@ -218,9 +218,9 @@ function bulletPanelStyles(title: string) {
     return {
       badge: "Weakness",
       badgeClass:
-        "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200",
+        "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-800 print:bg-rose-50 print:text-rose-700 print:ring-rose-200",
       bulletClass:
-        "border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white",
+        "border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white text-slate-800 dark:border-rose-800 dark:from-rose-950/40 dark:via-slate-950 dark:to-slate-950 dark:text-rose-50 print:border-rose-200 print:from-rose-50 print:via-white print:to-white print:text-slate-800",
       dotClass: "bg-rose-500",
     };
   }
@@ -229,9 +229,9 @@ function bulletPanelStyles(title: string) {
     return {
       badge: "Threat",
       badgeClass:
-        "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200",
+        "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200 dark:bg-orange-950/50 dark:text-orange-200 dark:ring-orange-800 print:bg-orange-50 print:text-orange-700 print:ring-orange-200",
       bulletClass:
-        "border-orange-200 bg-gradient-to-br from-orange-50 via-white to-white",
+        "border-orange-200 bg-gradient-to-br from-orange-50 via-white to-white text-slate-800 dark:border-orange-800 dark:from-orange-950/40 dark:via-slate-950 dark:to-slate-950 dark:text-orange-50 print:border-orange-200 print:from-orange-50 print:via-white print:to-white print:text-slate-800",
       dotClass: "bg-orange-500",
     };
   }
@@ -240,9 +240,9 @@ function bulletPanelStyles(title: string) {
     return {
       badge: "Strength",
       badgeClass:
-        "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200",
+        "bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-200 dark:bg-teal-950/50 dark:text-teal-200 dark:ring-teal-800 print:bg-teal-50 print:text-teal-700 print:ring-teal-200",
       bulletClass:
-        "border-teal-200 bg-gradient-to-br from-teal-50 via-white to-white",
+        "border-teal-200 bg-gradient-to-br from-teal-50 via-white to-white text-slate-800 dark:border-teal-800 dark:from-teal-950/40 dark:via-slate-950 dark:to-slate-950 dark:text-teal-50 print:border-teal-200 print:from-teal-50 print:via-white print:to-white print:text-slate-800",
       dotClass: "bg-teal-500",
     };
   }
@@ -250,11 +250,27 @@ function bulletPanelStyles(title: string) {
   return {
     badge: "Insight",
     badgeClass:
-      "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+      "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800 print:bg-amber-50 print:text-amber-700 print:ring-amber-200",
     bulletClass:
-      "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white",
+      "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white text-slate-800 dark:border-amber-800 dark:from-amber-950/40 dark:via-slate-950 dark:to-slate-950 dark:text-amber-50 print:border-amber-200 print:from-amber-50 print:via-white print:to-white print:text-slate-800",
     dotClass: "bg-amber-500",
   };
+}
+
+function reportCardStatusClass(status: string) {
+  if (status === "Complete" || status === "Bonus") {
+    return "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-800 print:bg-emerald-50 print:text-emerald-700 print:ring-emerald-200";
+  }
+
+  if (status === "Partial") {
+    return "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800 print:bg-amber-50 print:text-amber-700 print:ring-amber-200";
+  }
+
+  if (status === "Penalty") {
+    return "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-800 print:bg-rose-50 print:text-rose-700 print:ring-rose-200";
+  }
+
+  return "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 print:bg-slate-100 print:text-slate-600 print:ring-slate-200";
 }
 
 async function getReport(id: string) {
@@ -345,24 +361,24 @@ export default async function PrintReportPage({
     healthScore.label === "Healthy"
       ? {
           badge:
-            "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
+            "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-800 print:bg-emerald-50 print:text-emerald-700 print:ring-emerald-200",
           panel:
-            "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white",
+            "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white dark:border-emerald-800 dark:from-emerald-950/40 dark:via-slate-950 dark:to-slate-950 print:border-emerald-200 print:from-emerald-50 print:via-white print:to-white",
           dot: "bg-emerald-500",
         }
       : healthScore.label === "Warning"
         ? {
             badge:
-              "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
+              "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800 print:bg-amber-50 print:text-amber-700 print:ring-amber-200",
             panel:
-              "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white",
+              "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white dark:border-amber-800 dark:from-amber-950/40 dark:via-slate-950 dark:to-slate-950 print:border-amber-200 print:from-amber-50 print:via-white print:to-white",
             dot: "bg-amber-500",
           }
         : {
             badge:
-              "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200",
+              "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-800 print:bg-rose-50 print:text-rose-700 print:ring-rose-200",
             panel:
-              "border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white",
+              "border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white dark:border-rose-800 dark:from-rose-950/40 dark:via-slate-950 dark:to-slate-950 print:border-rose-200 print:from-rose-50 print:via-white print:to-white",
             dot: "bg-rose-500",
           };
 
@@ -409,7 +425,7 @@ export default async function PrintReportPage({
             )}
           </div>
 
-          <div className="flex h-20 w-44 items-center justify-center border border-slate-300 bg-white p-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+          <div className="flex h-20 w-44 items-center justify-center border border-slate-300 bg-white p-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 print:border-slate-300 print:bg-white print:text-slate-400">
             {client?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -433,7 +449,7 @@ export default async function PrintReportPage({
           {kpis.map((item) => (
             <div
               key={item.label}
-              className="rounded-lg border border-slate-200  p-4"
+              className="rounded-lg border border-slate-200 p-4 dark:border-slate-800 dark:bg-slate-950/60 print:border-slate-200 print:bg-white"
             >
               <p className="text-xs font-medium uppercase tracking-[0.14em]">
                 {item.label}
@@ -458,18 +474,23 @@ export default async function PrintReportPage({
                 >
                   {healthScore.label}
                 </span>
-                <p className="text-2xl font-bold tracking-tight text-slate-950">
+                <p className="text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-50 print:text-slate-950">
                   {healthScore.score}/100
                 </p>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ring-1 ring-inset ring-slate-200">
+                <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ring-1 ring-inset ring-slate-200 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-700 print:bg-white/80 print:text-slate-700 print:ring-slate-200">
                   Grade {healthScore.grade}
                 </span>
-                <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ring-1 ring-inset ring-slate-200">
+                <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ring-1 ring-inset ring-slate-200 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-700 print:bg-white/80 print:text-slate-700 print:ring-slate-200">
                   {healthScore.mode} Mode
                 </span>
               </div>
+              <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300 print:text-slate-600">
+                Setup {healthScore.setupScore}/90 · Performance{" "}
+                {healthScore.performanceAdjustment >= 0 ? "+" : ""}
+                {healthScore.performanceAdjustment}/10
+              </p>
             </div>
 
             <div className="max-w-2xl">
@@ -478,18 +499,66 @@ export default async function PrintReportPage({
                   className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${healthStyles.dot}`}
                   aria-hidden="true"
                 />
-                <p className="text-sm leading-6 text-slate-700">
+                <p className="text-sm leading-6 text-slate-700 dark:text-slate-200 print:text-slate-700">
                   {healthScore.reason}
                 </p>
               </div>
             </div>
           </div>
         </div>
+
+        <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 print:border-slate-200 print:bg-white">
+          <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                Report Card
+              </p>
+              <h3 className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-50 print:text-slate-950">
+                Why this grade landed here
+              </h3>
+            </div>
+            <p className="text-xs leading-5 text-slate-500">
+              Setup {healthScore.setupScore}/90 · Performance{" "}
+              {healthScore.performanceAdjustment >= 0 ? "+" : ""}
+              {healthScore.performanceAdjustment}/10
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {healthScore.reportCard.map((component) => (
+              <div
+                key={`${component.label}-${component.status}-${component.points}`}
+                className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70 print:border-slate-200 print:bg-slate-50"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-50 print:text-slate-950">
+                      {component.label}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300 print:text-slate-600">
+                      {component.reason}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-bold text-slate-950 dark:text-slate-50 print:text-slate-950">
+                      {component.points}/{component.maxPoints}
+                    </p>
+                    <span
+                      className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${reportCardStatusClass(component.status)}`}
+                    >
+                      {component.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="print-section mt-10">
         <h2 className="text-xl font-semibold">Notes</h2>
-        <div className="mt-4 rounded-lg border border-slate-200 p-5">
+        <div className="mt-4 rounded-lg border border-slate-200 p-5 dark:border-slate-800 dark:bg-slate-950/60 print:border-slate-200 print:bg-white">
           <p className="whitespace-pre-line text-sm leading-relaxed ">
             {report.notes || "No notes provided."}
           </p>
@@ -520,9 +589,9 @@ export default async function PrintReportPage({
                 return (
                   <div
                     key={`${section.title}-${index}`}
-                    className="rounded-lg border border-slate-200  p-6 shadow-sm"
+                    className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 print:border-slate-200 print:bg-white"
                   >
-                    <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3 border-b border-slate-100 pb-3 dark:border-slate-800 print:border-slate-100">
                       <span className="text-lg" aria-hidden="true">
                         {sectionIcon(section.title)}
                       </span>
@@ -536,7 +605,7 @@ export default async function PrintReportPage({
                         {bullets.map((bullet, bulletIndex) => (
                           <div
                             key={`${section.title}-bullet-${bulletIndex}`}
-                            className={`rounded-xl border p-4 shadow-sm ${panelStyles.bulletClass}`}
+                            className={`rounded-xl border bg-white p-4 text-slate-800 shadow-sm dark:bg-slate-950 dark:text-slate-100 print:bg-white print:text-slate-800 ${panelStyles.bulletClass}`}
                           >
                             <div className="flex items-start gap-3">
                               <span
@@ -549,7 +618,7 @@ export default async function PrintReportPage({
                                 >
                                   {panelStyles.badge}
                                 </span>
-                                <p className="mt-3 text-sm leading-6 ">
+                                <p className="mt-3 text-sm leading-6 text-slate-800 dark:text-slate-100 print:text-slate-800">
                                   {bullet}
                                 </p>
                               </div>
@@ -561,7 +630,7 @@ export default async function PrintReportPage({
 
                     {remainder && (
                       <div
-                        className="prose prose-slate mt-4 max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900"
+                        className="prose prose-slate mt-4 max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
                         dangerouslySetInnerHTML={{ __html: marked(remainder) }}
                       />
                     )}
@@ -576,9 +645,9 @@ export default async function PrintReportPage({
               })()
             ))
           ) : (
-            <div className="rounded-lg border border-slate-200  p-6 shadow-sm">
+            <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 print:border-slate-200 print:bg-white">
               <div
-                className="prose prose-slate max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900"
+                className="prose prose-slate max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
                 dangerouslySetInnerHTML={{ __html: marked(summaryMarkdown) }}
               />
             </div>
