@@ -5,14 +5,21 @@ import { cookies } from "next/headers";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const origin = url.origin;
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login`);
+    return new NextResponse(null, {
+      status: 307,
+      headers: { Location: "/login" },
+    });
   }
 
   const cookieStore = await cookies();
-  const response = NextResponse.redirect(`${origin}/dashboard`);
+  // A relative Location keeps the browser on its public origin. Behind a
+  // reverse proxy, request.url can contain an internal localhost address.
+  const response = new NextResponse(null, {
+    status: 307,
+    headers: { Location: "/dashboard" },
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,7 +42,10 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("Auth callback error:", error);
-    return NextResponse.redirect(`${origin}/login?error=auth_callback`);
+    return new NextResponse(null, {
+      status: 307,
+      headers: { Location: "/login?error=auth_callback" },
+    });
   }
 
   return response;
