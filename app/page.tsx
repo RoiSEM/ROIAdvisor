@@ -1,8 +1,9 @@
+import { appData } from "@/lib/data-store";
 import BillingAwarePricingCards from "@/components/billing-aware-pricing-cards";
 import ManageBillingButton from "@/components/manage-billing-button";
 import SiteHeaderNav from "@/components/site-header-nav";
 import { getBillingSnapshot } from "@/lib/billing";
-import { getRequestUser, supabaseAdmin } from "@/lib/supabase-server";
+import { getRequestUser } from "@/lib/supabase-server";
 import Link from "next/link";
 
 const valueProps = [
@@ -31,7 +32,7 @@ export default async function HomePage() {
   const signedInUser = !userError ? user : null;
 
   const { data: billing } = signedInUser
-    ? await supabaseAdmin
+    ? await appData
         .from("billing_accounts")
         .select("plan, status, stripe_customer_id, stripe_subscription_id")
         .eq("user_id", signedInUser.id)

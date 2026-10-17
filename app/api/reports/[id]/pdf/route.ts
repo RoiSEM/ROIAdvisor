@@ -1,4 +1,5 @@
-import { getRequestUser, isAdminUser, supabaseAdmin } from "@/lib/supabase-server";
+import { appData } from "@/lib/data-store";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import { buildPreviewSummary, getReportHealthScore } from "@/lib/report-summary";
 import {
   PDFDocument,
@@ -314,7 +315,7 @@ export async function GET(
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { data: reportAccess, error: reportAccessError } = await supabaseAdmin
+    const { data: reportAccess, error: reportAccessError } = await appData
       .from("reports")
       .select("id, client_id")
       .eq("id", id)
@@ -324,7 +325,7 @@ export async function GET(
       return new Response("Report not found", { status: 404 });
     }
 
-    let clientQuery = supabaseAdmin
+    let clientQuery = appData
       .from("clients")
       .select("id")
       .eq("id", reportAccess.client_id);
@@ -339,7 +340,7 @@ export async function GET(
       return new Response("Report not found", { status: 404 });
     }
 
-    const { data: report, error } = await supabaseAdmin
+    const { data: report, error } = await appData
       .from("reports")
       .select(
         `

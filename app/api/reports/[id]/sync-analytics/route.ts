@@ -1,4 +1,5 @@
-import { getRequestUser, isAdminUser, supabaseAdmin } from "@/lib/supabase-server";
+import { appData } from "@/lib/data-store";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import { GoogleAnalyticsConfigError, getGA4Report } from "@/lib/analytics/ga4";
 
 function getMissingColumnName(message: string | undefined) {
@@ -31,7 +32,7 @@ async function updateReportAnalyticsWithSchemaFallback(reportId: string, payload
   ]);
 
   while (true) {
-    const { error } = await supabaseAdmin
+    const { error } = await appData
       .from("reports")
       .update(updatePayload)
       .eq("id", reportId);
@@ -55,7 +56,7 @@ async function getReportForAnalytics(reportId: string) {
   let selectedColumns = "id, client_id, start_date, end_date";
 
   while (true) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await appData
       .from("reports")
       .select(selectedColumns)
       .eq("id", reportId)
@@ -109,7 +110,7 @@ export async function POST(
 
     const analyticsReport = report as unknown as AnalyticsReportRecord;
 
-    let clientQuery = supabaseAdmin
+    let clientQuery = appData
       .from("clients")
       .select("id, ga4_property_id")
       .eq("id", analyticsReport.client_id);

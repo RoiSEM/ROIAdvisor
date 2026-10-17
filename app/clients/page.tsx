@@ -1,13 +1,10 @@
+import { appData } from "@/lib/data-store";
 import ClientForm from "@/components/client-form";
 import ServiceCta from "@/components/service-cta";
 import SiteHeaderNav from "@/components/site-header-nav";
 import SignOutButton from "@/components/sign-out-button";
 import { getBillingSnapshot } from "@/lib/billing";
-import {
-  getRequestUser,
-  isAdminUser,
-  supabaseAdmin,
-} from "@/lib/supabase-server";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -29,7 +26,7 @@ async function getClients() {
 
   const isAdmin = isAdminUser(user);
 
-  let query = supabaseAdmin.from("clients").select("*");
+  let query = appData.from("clients").select("*");
 
   if (!isAdmin) {
     query = query.eq("user_id", user.id);
@@ -45,7 +42,7 @@ async function getClients() {
   }
 
   const { data: billing, error: billingError } = !isAdmin
-    ? await supabaseAdmin
+    ? await appData
         .from("billing_accounts")
         .select("plan, status, stripe_customer_id, stripe_subscription_id")
         .eq("user_id", user.id)

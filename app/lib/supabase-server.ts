@@ -1,3 +1,4 @@
+import { ensurePostgresUser } from "./postgres-data";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type User } from "@supabase/supabase-js";
@@ -52,6 +53,7 @@ export async function getRequestUser(req?: Request) {
       error,
     } = await supabaseAdmin.auth.getUser(accessToken);
 
+    if (user && !error) await ensurePostgresUser(user);
     return { user, error };
   }
 
@@ -61,5 +63,6 @@ export async function getRequestUser(req?: Request) {
     error,
   } = await supabase.auth.getUser();
 
+  if (user && !error) await ensurePostgresUser(user);
   return { user, error };
 }

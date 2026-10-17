@@ -47,7 +47,13 @@ export async function GET(req: Request) {
     const { rows } = await client.query(
       "SELECT current_database() AS database, current_setting('server_version') AS server_version, current_setting('transaction_read_only') AS read_only",
     );
-    return Response.json({ ok: true, ...rows[0] }, { headers });
+    return Response.json({
+      ok: true,
+      ...rows[0],
+      application_data_backend: process.env.DATA_BACKEND ?? "supabase",
+      application_schema: process.env.DATA_BACKEND === "postgres" ? "convert_staging" : null,
+      authentication_backend: "supabase",
+    }, { headers });
   } catch (failure) {
     const code = failure && typeof failure === "object" && "code" in failure ? String(failure.code) : "";
     const knownCodes = new Set(["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "28P01", "28000", "3D000", "42501", "53300"]);

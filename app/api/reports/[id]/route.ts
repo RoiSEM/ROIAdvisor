@@ -1,4 +1,5 @@
-import { getRequestUser, isAdminUser, supabaseAdmin } from "@/lib/supabase-server";
+import { appData } from "@/lib/data-store";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 
 export async function DELETE(
   req: Request,
@@ -15,7 +16,7 @@ export async function DELETE(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: report, error: reportError } = await supabaseAdmin
+    const { data: report, error: reportError } = await appData
       .from("reports")
       .select("id, client_id")
       .eq("id", id)
@@ -25,7 +26,7 @@ export async function DELETE(
       return Response.json({ error: "Report not found" }, { status: 404 });
     }
 
-    let clientQuery = supabaseAdmin
+    let clientQuery = appData
       .from("clients")
       .select("id")
       .eq("id", report.client_id);
@@ -40,7 +41,7 @@ export async function DELETE(
       return Response.json({ error: "Report not found" }, { status: 404 });
     }
 
-    const { error } = await supabaseAdmin.from("reports").delete().eq("id", id);
+    const { error } = await appData.from("reports").delete().eq("id", id);
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });

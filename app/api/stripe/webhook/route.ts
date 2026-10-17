@@ -1,7 +1,8 @@
+import { appData } from "@/lib/data-store";
 import Stripe from "stripe";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-server";
+
 
 export const runtime = "nodejs";
 
@@ -42,7 +43,7 @@ async function upsertBillingAccount(params: {
     updated_at: new Date().toISOString(),
   };
 
-  const { data: existingByUserId, error: lookupByUserIdError } = await supabaseAdmin
+  const { data: existingByUserId, error: lookupByUserIdError } = await appData
     .from("billing_accounts")
     .select("id")
     .eq("user_id", params.userId)
@@ -57,7 +58,7 @@ async function upsertBillingAccount(params: {
   const existingRecordId = existingByUserId?.id;
 
   if (existingRecordId) {
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await appData
       .from("billing_accounts")
       .update(payload)
       .eq("id", existingRecordId);
@@ -69,7 +70,7 @@ async function upsertBillingAccount(params: {
     return;
   }
 
-  const { error: insertError } = await supabaseAdmin
+  const { error: insertError } = await appData
     .from("billing_accounts")
     .insert(payload);
 
@@ -192,7 +193,7 @@ export async function POST(req: Request) {
         const priceId = subscription.items.data[0]?.price?.id || null;
         const plan = getPlanFromPriceId(priceId);
 
-        const { data: billing, error } = await supabaseAdmin
+        const { data: billing, error } = await appData
           .from("billing_accounts")
           .select("user_id")
           .eq("stripe_customer_id", customerId)
@@ -235,7 +236,7 @@ export async function POST(req: Request) {
           break;
         }
 
-        const { data: billing, error } = await supabaseAdmin
+        const { data: billing, error } = await appData
           .from("billing_accounts")
           .select("user_id, stripe_subscription_id, stripe_price_id, plan")
           .eq("stripe_customer_id", customerId)

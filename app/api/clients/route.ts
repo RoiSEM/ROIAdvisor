@@ -1,9 +1,6 @@
+import { appData } from "@/lib/data-store";
 import { getBillingSnapshot } from "@/lib/billing";
-import {
-  getRequestUser,
-  isAdminUser,
-  supabaseAdmin,
-} from "@/lib/supabase-server";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 
 function getMissingColumnName(message: string | undefined) {
   if (!message) return null;
@@ -25,7 +22,7 @@ async function insertClientWithSchemaFallback(payload: Record<string, unknown>) 
   ]);
 
   while (true) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await appData
       .from("clients")
       .insert([insertPayload])
       .select()
@@ -56,7 +53,7 @@ export async function GET(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let query = supabaseAdmin
+  let query = appData
     .from("clients")
     .select("*")
     .order("created_at", { ascending: false });
@@ -114,7 +111,7 @@ export async function POST(req: Request) {
     } = await req.json();
 
     if (!isAdmin) {
-      const { data: billing, error: billingError } = await supabaseAdmin
+      const { data: billing, error: billingError } = await appData
         .from("billing_accounts")
         .select("plan, status, stripe_customer_id, stripe_subscription_id")
         .eq("user_id", user.id)
@@ -128,7 +125,7 @@ export async function POST(req: Request) {
       const websiteLimit = billingSnapshot.websiteOwnershipLimit;
 
       if (websiteLimit !== null) {
-        const { count, error: countError } = await supabaseAdmin
+        const { count, error: countError } = await appData
           .from("clients")
           .select("id", { count: "exact", head: true })
           .eq("user_id", user.id);

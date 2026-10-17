@@ -1,5 +1,7 @@
+import { appData } from "@/lib/data-store";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import { marked } from "marked";
-import { supabase } from "@/lib/supabase-server";
+
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import PrintPageButton from "@/components/print-page-button";
@@ -274,7 +276,9 @@ function reportCardStatusClass(status: string) {
 }
 
 async function getReport(id: string) {
-  const { data, error } = await supabase
+  const { user, error: authError } = await getRequestUser();
+  if (authError || !user) throw new Error("Report not found");
+  const { data, error } = await appData
     .from("reports")
     .select(
       `
@@ -291,6 +295,10 @@ async function getReport(id: string) {
   }
 
   if (!data) {
+    throw new Error("Report not found");
+  }
+  const client = Array.isArray(data.clients) ? data.clients[0] : data.clients;
+  if (!client || (!isAdminUser(user) && client.user_id !== user.id)) {
     throw new Error("Report not found");
   }
 

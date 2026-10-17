@@ -1,6 +1,7 @@
+import { appData } from "@/lib/data-store";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getRequestUser, supabaseAdmin } from "@/lib/supabase-server";
+import { getRequestUser } from "@/lib/supabase-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-03-25.dahlia",
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: billing, error } = await supabaseAdmin
+    const { data: billing, error } = await appData
       .from("billing_accounts")
       .select("stripe_customer_id")
       .eq("user_id", user.id)

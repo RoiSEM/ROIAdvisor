@@ -1,10 +1,7 @@
+import { appData } from "@/lib/data-store";
 import { NextRequest } from "next/server";
 import { getBillingSnapshot, type AccountPlan } from "@/lib/billing";
-import {
-  getRequestUser,
-  isAdminUser,
-  supabaseAdmin,
-} from "@/lib/supabase-server";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 
 const TRIAL_REPORT_LIMIT = 3;
 
@@ -48,7 +45,7 @@ async function createReportWithSchemaFallback(payload: {
   ]);
 
   while (true) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await appData
       .from("reports")
       .insert([insertPayload])
       .select()
@@ -139,7 +136,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let clientQuery = supabaseAdmin
+  let clientQuery = appData
     .from("clients")
     .select("id")
     .eq("id", clientId);
@@ -154,7 +151,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "Client not found" }, { status: 404 });
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await appData
     .from("reports")
     .select("*")
     .eq("client_id", clientId)
@@ -197,7 +194,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "client_id is required." }, { status: 400 });
     }
 
-    let clientQuery = supabaseAdmin
+    let clientQuery = appData
       .from("clients")
       .select("id, approval_status")
       .eq("id", clientId);
@@ -222,7 +219,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: billing } = await supabaseAdmin
+    const { data: billing } = await appData
       .from("billing_accounts")
       .select("plan, status")
       .eq("user_id", user.id)
@@ -239,7 +236,7 @@ export async function POST(req: Request) {
     });
 
     if (!billingSnapshot.hasUnlimitedReports) {
-      const { count, error: countError } = await supabaseAdmin
+      const { count, error: countError } = await appData
         .from("reports")
         .select("id", { count: "exact", head: true })
         .eq("client_id", clientId)
@@ -351,7 +348,7 @@ export async function POST(req: Request) {
       return Response.json({ error: error.message }, { status: 500 });
     }
 
-    const { count: updatedCount } = await supabaseAdmin
+    const { count: updatedCount } = await appData
       .from("reports")
       .select("id", { count: "exact", head: true })
       .eq("client_id", clientId)

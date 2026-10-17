@@ -1,25 +1,18 @@
+import { appData } from "@/lib/data-store";
 import ClientForm from "@/components/client-form";
-import {
-  createSupabaseUserClient,
-  isAdminUser,
-  supabaseAdmin,
-} from "@/lib/supabase-server";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import Link from "next/link";
 import SignOutButton from "@/components/sign-out-button";
 import { redirect } from "next/navigation";
 
 async function getClient(id: string) {
-  const supabase = await createSupabaseUserClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const { user, error: userError } = await getRequestUser();
 
   if (userError || !user) {
     redirect("/login");
   }
 
-  let query = supabaseAdmin
+  let query = appData
     .from("clients")
     .select("*")
     .eq("id", id);

@@ -1,5 +1,6 @@
+import { appData } from "@/lib/data-store";
 import { getBillingSnapshot } from "@/lib/billing";
-import { getRequestUser, supabaseAdmin } from "@/lib/supabase-server";
+import { getRequestUser } from "@/lib/supabase-server";
 
 export async function GET() {
   const {
@@ -18,7 +19,7 @@ export async function GET() {
     });
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await appData
     .from("billing_accounts")
     .select("plan, status, stripe_customer_id, stripe_subscription_id")
     .eq("user_id", user.id)

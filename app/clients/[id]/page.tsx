@@ -1,11 +1,8 @@
+import { appData } from "@/lib/data-store";
 import ReportForm from "@/components/report-form";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  createSupabaseUserClient,
-  isAdminUser,
-  supabaseAdmin,
-} from "@/lib/supabase-server";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import { marked } from "marked";
 import { ChevronDown } from "lucide-react";
 import RegenerateSummaryButton from "@/components/regenerate-summary-button";
@@ -18,17 +15,13 @@ import SignOutButton from "@/components/sign-out-button";
 import { redirect } from "next/navigation";
 
 async function getClient(id: string) {
-  const supabase = await createSupabaseUserClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const { user, error: userError } = await getRequestUser();
 
   if (userError || !user) {
     redirect("/login");
   }
 
-  let query = supabaseAdmin
+  let query = appData
     .from("clients")
     .select("*")
     .eq("id", id);
@@ -51,12 +44,11 @@ async function getClient(id: string) {
 }
 
 async function getClientMetadata(id: string) {
-  const { data } = await supabaseAdmin
-    .from("clients")
-    .select("name")
-    .eq("id", id)
-    .maybeSingle();
-
+  const { user, error } = await getRequestUser();
+  if (error || !user) return null;
+  let query = appData.from("clients").select("name").eq("id", id);
+  if (!isAdminUser(user)) query = query.eq("user_id", user.id);
+  const { data } = await query.maybeSingle();
   return data;
 }
 
@@ -299,7 +291,7 @@ function bulletPanelStyles(title: string) {
 }
 
 async function getReports(id: string) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await appData
     .from("reports")
     .select("*")
     .eq("client_id", id)
@@ -310,7 +302,7 @@ async function getReports(id: string) {
     throw new Error("Failed to load reports");
   }
 
-  return data;
+  return data ?? [];
 }
 
 export default async function ClientDetailPage({

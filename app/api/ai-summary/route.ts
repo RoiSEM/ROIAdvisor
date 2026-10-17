@@ -1,5 +1,6 @@
+import { appData } from "@/lib/data-store";
 import OpenAI from "openai";
-import { getRequestUser, isAdminUser, supabaseAdmin } from "@/lib/supabase-server";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import {
   buildSummaryPrompt,
   type SummaryClientData,
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "reportId is required" }, { status: 400 });
     }
 
-    const { data: report, error: reportError } = await supabaseAdmin
+    const { data: report, error: reportError } = await appData
       .from("reports")
       .select("id, client_id")
       .eq("id", reportId)
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "Report not found" }, { status: 404 });
     }
 
-    let clientQuery = supabaseAdmin
+    let clientQuery = appData
       .from("clients")
       .select("*")
       .eq("id", report.client_id);
@@ -124,7 +125,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await appData
       .from("reports")
       .update({
         ai_summary: summary,

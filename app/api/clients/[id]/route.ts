@@ -1,8 +1,5 @@
-import {
-  getRequestUser,
-  isAdminUser,
-  supabaseAdmin,
-} from "@/lib/supabase-server";
+import { appData } from "@/lib/data-store";
+import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 
 function getMissingColumnName(message: string | undefined) {
   if (!message) return null;
@@ -27,7 +24,7 @@ async function updateClientWithSchemaFallback(
   ]);
 
   while (true) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await appData
       .from("clients")
       .update(updatePayload)
       .eq("id", id)
@@ -64,7 +61,7 @@ export async function GET(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let query = supabaseAdmin
+    let query = appData
       .from("clients")
       .select("*")
       .eq("id", id);
@@ -104,7 +101,7 @@ export async function PATCH(
 
     const isAdmin = isAdminUser(user);
 
-    let existingQuery = supabaseAdmin
+    let existingQuery = appData
       .from("clients")
       .select("id")
       .eq("id", id);
@@ -213,7 +210,7 @@ export async function DELETE(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let query = supabaseAdmin.from("clients").delete().eq("id", id);
+    let query = appData.from("clients").delete().eq("id", id);
 
     if (!isAdminUser(user)) {
       query = query.eq("user_id", user.id);
