@@ -15,6 +15,7 @@ function loadRoute({ authError = null } = {}) {
   const module = { exports: {} };
   let exchanges = 0;
   const mockedRequire = (name) => {
+    if (name === '@/lib/auth-config') return { getAuthBackend: () => 'supabase' };
     if (name === 'next/headers') return { cookies: async () => ({ getAll: () => [] }) };
     if (name === '@supabase/ssr') return {
       createServerClient: (_url, _key, options) => ({ auth: {

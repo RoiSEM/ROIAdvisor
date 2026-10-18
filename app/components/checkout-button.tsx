@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase-browser";
+import { useRouter } from "next/navigation";
 
 type CheckoutButtonProps = {
   plan: "starter" | "pro";
@@ -23,24 +23,15 @@ export default function CheckoutButton({
   disabled = false,
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const startCheckout = async () => {
     try {
       setLoading(true);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        window.location.href = "/login";
-        return;
-      }
-
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -50,6 +41,10 @@ export default function CheckoutButton({
         }),
       });
 
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
       const text = await res.text();
       const data = text ? JSON.parse(text) : null;
 

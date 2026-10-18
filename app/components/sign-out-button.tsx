@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase } from "@/lib/supabase-browser";
+import { signOut } from "@/lib/auth-browser";
 import { useRouter } from "next/navigation";
 
 type Props = {
@@ -11,10 +11,9 @@ export default function SignOutButton({ className }: Props) {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      console.error("Sign-out error:", error);
+    try {
+      await signOut();
+    } catch {
       alert("Unable to sign out right now. Please try again.");
       return;
     }

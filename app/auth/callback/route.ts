@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getAuthBackend } from "@/lib/auth-config";
 
 export async function GET(request: Request) {
+  if (getAuthBackend() === "better-auth") return new NextResponse(null, { status: 307, headers: { Location: "/login" } });
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
 

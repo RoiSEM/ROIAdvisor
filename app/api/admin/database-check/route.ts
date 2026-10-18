@@ -52,7 +52,7 @@ export async function GET(req: Request) {
       ...rows[0],
       application_data_backend: process.env.DATA_BACKEND ?? "supabase",
       application_schema: process.env.DATA_BACKEND === "postgres" ? "convert_staging" : null,
-      authentication_backend: "supabase",
+      authentication_backend: process.env.AUTH_BACKEND ?? "supabase",
     }, { headers });
   } catch (failure) {
     const code = failure && typeof failure === "object" && "code" in failure ? String(failure.code) : "";

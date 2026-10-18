@@ -4,6 +4,8 @@ import {
   supabaseAdmin,
 } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
+import { getAuthBackend } from "@/lib/auth-config";
+import { postgresPool } from "@/lib/postgres-data";
 
 export async function GET() {
   const {
@@ -19,6 +21,14 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  if (getAuthBackend() === "better-auth") {
+    try {
+      const { rows } = await postgresPool().query("SELECT id, email FROM convert_staging.users ORDER BY email");
+      return NextResponse.json(rows, { headers: { "Cache-Control": "no-store" } });
+    } catch {
+      return NextResponse.json({ error: "User directory unavailable" }, { status: 503 });
+    }
+  }
   const { data, error } = await supabaseAdmin.auth.admin.listUsers();
 
   if (error) {

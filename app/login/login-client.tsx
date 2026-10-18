@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase } from "@/lib/supabase-browser";
+import { startGoogleSignIn } from "@/lib/auth-browser";
 import { useSearchParams } from "next/navigation";
 
 export default function LoginClient() {
@@ -8,17 +8,9 @@ export default function LoginClient() {
   const error = searchParams.get("error");
 
   const handleGoogleLogin = async () => {
-    const redirectTo = `${window.location.origin}/auth/callback`;
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-      },
-    });
-
-    if (error) {
-      console.error("Google login error:", error);
+    try {
+      await startGoogleSignIn();
+    } catch {
       alert("Unable to start Google sign-in. Please try again.");
     }
   };

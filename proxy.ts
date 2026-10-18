@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getAuthBackend } from "./app/lib/auth-config";
 
 export async function proxy(request: NextRequest) {
+  // Better Auth is checked by each page/API's getRequestUser, not by Supabase.
+  if (getAuthBackend() === "better-auth") return NextResponse.next();
   let response = NextResponse.next({
     request: {
       headers: request.headers,
