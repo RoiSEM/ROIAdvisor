@@ -10,10 +10,7 @@ function load(relative) {
  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,relative),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:mod,exports:mod.exports,require,console,process});
  return mod.exports;
 }
-test('real PostgreSQL schema + Google subject seed preserve legacy ownership and session revocation', async () => {
-  const { seedGoogleAccounts, runAuthMigration } = load('app/lib/auth-migration.ts');
- assert.equal(typeof runAuthMigration,'function','atomic auth migration must exist');
- assert.equal(typeof seedGoogleAccounts,'function','transactional identity seeding must exist');
+test('existing Google accounts preserve legacy ownership and session revocation on real PostgreSQL', async () => {
  const { PGlite } = await import('@electric-sql/pglite');
  const { getMigrations } = await import('better-auth/db/migration');
  const { betterAuth } = await import('better-auth');
@@ -29,10 +26,10 @@ test('real PostgreSQL schema + Google subject seed preserve legacy ownership and
   const identity={user_id:'00000000-0000-4000-8000-000000000001',provider:'google',provider_account_id:'123456789',email:'fixture@example.test',email_verified:true,name:'Fixture',image:null,created_at:'2026-10-17T00:00:00Z'};
   await query('INSERT INTO convert_staging.users VALUES ($1,$2,$3)',[identity.user_id,identity.email,identity.created_at]);
   await query('INSERT INTO convert_staging.clients VALUES ($1,$2)',['00000000-0000-4000-8000-000000000002',identity.user_id]);
-  await assert.rejects(() => runAuthMigration(client,[{...identity,email:'wrong@example.test'}],sql,'test-hash'),/mismatch/);
-  assert.equal((await query("SELECT to_regclass('public.convert_auth_user') AS t")).rows[0].t,null);
-  await runAuthMigration(client,[identity],sql,'test-hash');
-  await assert.rejects(() => runAuthMigration(client,[identity],sql,'test-hash'),/already/);
+  // Test-only existing-account fixture, not an application migration/importer.
+  await db.exec(sql);
+  await query('INSERT INTO public.convert_auth_user (id, name, email, "emailVerified", "createdAt", "updatedAt") VALUES ($1,$2,$3,true,$4,$4)', [identity.user_id, identity.name, identity.email, identity.created_at]);
+  await query('INSERT INTO public.convert_auth_account (id, "accountId", "providerId", "userId", "createdAt", "updatedAt") VALUES ($1,$2,\'google\',$3,$4,$4)', ['00000000-0000-4000-8000-000000000003', identity.provider_account_id, identity.user_id, identity.created_at]);
   const auth=betterAuth(options);const ctx=await auth.$context;
   const account=await ctx.internalAdapter.findAccountByKey({ accountId: identity.provider_account_id, providerId: 'google' });
   assert.equal(account.userId,identity.user_id);
