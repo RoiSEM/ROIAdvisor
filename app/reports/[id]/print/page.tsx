@@ -1,6 +1,6 @@
 import { appData } from "@/lib/data-store";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
-import { marked } from "marked";
+import ReportMarkdown from "@/components/report-markdown";
 
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -637,10 +637,10 @@ export default async function PrintReportPage({
                     )}
 
                     {remainder && (
-                      <div
+                      <ReportMarkdown
+                        markdown={remainder}
                         className="prose prose-slate mt-4 max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
-                        dangerouslySetInnerHTML={{ __html: marked(remainder) }}
-                      />
+                        />
                     )}
 
                     {!showBulletPanel && !remainder && (
@@ -654,10 +654,10 @@ export default async function PrintReportPage({
             ))
           ) : (
             <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 print:border-slate-200 print:bg-white">
-              <div
+              <ReportMarkdown
+                markdown={summaryMarkdown}
                 className="prose prose-slate max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
-                dangerouslySetInnerHTML={{ __html: marked(summaryMarkdown) }}
-              />
+                />
             </div>
           )}
         </div>

@@ -3,7 +3,7 @@ import ReportForm from "@/components/report-form";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
-import { marked } from "marked";
+import ReportMarkdown from "@/components/report-markdown";
 import { ChevronDown } from "lucide-react";
 import RegenerateSummaryButton from "@/components/regenerate-summary-button";
 import DeleteReportButton from "@/components/delete-summary-button";
@@ -543,12 +543,10 @@ export default async function ClientDetailPage({
                                     )}
 
                                     {remainder && (
-                                      <div
+                                      <ReportMarkdown
+                                        markdown={remainder}
                                         className="prose prose-slate mt-4 max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
-                                        dangerouslySetInnerHTML={{
-                                          __html: marked(remainder),
-                                        }}
-                                      />
+                                        />
                                     )}
 
                                     {!showBulletPanel && !remainder && (
@@ -560,12 +558,10 @@ export default async function ClientDetailPage({
                                 );
                               })
                             ) : (
-                              <div
+                              <ReportMarkdown
+                                markdown={summaryMarkdown}
                                 className="prose prose-slate mt-2 max-w-none prose-headings:text-slate-900 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
-                                dangerouslySetInnerHTML={{
-                                  __html: marked(summaryMarkdown),
-                                }}
-                              />
+                                />
                             )}
                           </div>
                           <div className="mt-4 flex flex-wrap gap-2">
