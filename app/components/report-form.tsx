@@ -2,31 +2,20 @@
 
 import { ReportDatePicker } from "@/components/calendar";
 import ServiceCta from "@/components/service-cta";
+import { parseAnalyticsCsv, MAX_CSV_BYTES, type UploadedAnalytics } from "@/lib/analytics-csv";
+import { hasValidReportMetrics } from "@/lib/report-metrics";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type AccountPlan = "free" | "starter" | "pro" | "agency";
 
-type UploadedAnalytics = {
-  traffic: number;
-  pageViews: number;
-  activeUsers: number;
-  bounceRate: number;
-  engagementRate: number;
-  conversions: number;
-  channelPerformance: Array<Record<string, string | number>>;
-  landingPagePerformance: Array<Record<string, string | number>>;
-  devicePerformance: Array<Record<string, string | number>>;
-  keyEventPerformance: Array<Record<string, string | number>>;
-};
-
 const emptyUploadedAnalytics: UploadedAnalytics = {
-  traffic: 0,
-  pageViews: 0,
-  activeUsers: 0,
-  bounceRate: 0,
-  engagementRate: 0,
-  conversions: 0,
+  traffic: null,
+  pageViews: null,
+  activeUsers: null,
+  bounceRate: null,
+  engagementRate: null,
+  conversions: null,
   channelPerformance: [],
   landingPagePerformance: [],
   devicePerformance: [],
@@ -45,200 +34,12 @@ function planTone(plan: AccountPlan) {
   return "text-green-600";
 }
 
-function splitCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const nextChar = line[index + 1];
-
-    if (char === "\"" && nextChar === "\"") {
-      current += "\"";
-      index += 1;
-      continue;
-    }
-
-    if (char === "\"") {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-  return values;
+function metricToInput(value: number | null) {
+  return value !== null && Number.isFinite(value) ? String(value) : "";
 }
 
-function parseCsv(text: string) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (lines.length < 2) return [];
-
-  const headers = splitCsvLine(lines[0]).map((header) => header.trim());
-
-  return lines.slice(1).map((line) => {
-    const values = splitCsvLine(line);
-
-    return headers.reduce<Record<string, string>>((row, header, index) => {
-      row[header] = values[index] ?? "";
-      return row;
-    }, {});
-  });
-}
-
-function normalizeKey(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function parseMetricValue(value: string | undefined) {
-  if (!value) return 0;
-
-  const isPercent = value.includes("%");
-  const cleaned = value.replace(/[$,%\s]/g, "");
-  const number = Number(cleaned);
-
-  if (!Number.isFinite(number)) return 0;
-  return isPercent ? number / 100 : number;
-}
-
-function getFirstMetric(row: Record<string, string>, keys: string[]) {
-  const entry = Object.entries(row).find(([key]) => {
-    const normalized = normalizeKey(key);
-    return keys.some((candidate) => normalized.includes(candidate));
-  });
-
-  return parseMetricValue(entry?.[1]);
-}
-
-function getFirstText(row: Record<string, string>, keys: string[]) {
-  const entry = Object.entries(row).find(([key]) => {
-    const normalized = normalizeKey(key);
-    return keys.some((candidate) => normalized.includes(candidate));
-  });
-
-  return entry?.[1]?.trim() || "";
-}
-
-function metricToInput(value: number) {
-  return value ? String(value) : "";
-}
-
-function percentToInput(value: number) {
-  return value ? String((value * 100).toFixed(1)) : "";
-}
-
-function isBreakdownRow(
-  value: Record<string, string | number> | null,
-): value is Record<string, string | number> {
-  return Boolean(value);
-}
-
-function detectUploadedAnalytics(rows: Array<Record<string, string>>) {
-  const totals = rows.reduce<UploadedAnalytics>(
-    (acc, row) => {
-      acc.traffic += getFirstMetric(row, ["sessions", "users", "totalusers"]);
-      acc.pageViews += getFirstMetric(row, ["views", "screenpageviews", "pageviews"]);
-      acc.activeUsers += getFirstMetric(row, ["activeusers"]);
-      acc.conversions += getFirstMetric(row, ["conversions", "keyevents"]);
-
-      return acc;
-    },
-    { ...emptyUploadedAnalytics },
-  );
-
-  const firstRow = rows[0] || {};
-  const bounceRate = getFirstMetric(firstRow, ["bouncerate"]);
-  const engagementRate = getFirstMetric(firstRow, ["engagementrate"]);
-
-  return {
-    ...totals,
-    bounceRate: bounceRate > 1 ? bounceRate / 100 : bounceRate,
-    engagementRate: engagementRate > 1 ? engagementRate / 100 : engagementRate,
-    channelPerformance: rows
-      .map<Record<string, string | number> | null>((row) => {
-        const channel = getFirstText(row, [
-          "sessiondefaultchannelgroup",
-          "defaultchannelgroup",
-          "channel",
-          "source",
-          "medium",
-        ]);
-
-        if (!channel) return null;
-
-        return {
-          channel,
-          sessions: getFirstMetric(row, ["sessions"]),
-          conversions: getFirstMetric(row, ["conversions", "keyevents"]),
-        };
-      })
-      .filter(isBreakdownRow)
-      .slice(0, 8),
-    landingPagePerformance: rows
-      .map<Record<string, string | number> | null>((row) => {
-        const landingPage = getFirstText(row, [
-          "landingpage",
-          "pagepath",
-          "pagepathscreenclass",
-          "page",
-        ]);
-
-        if (!landingPage) return null;
-
-        return {
-          landingPage,
-          sessions: getFirstMetric(row, ["sessions"]),
-          conversions: getFirstMetric(row, ["conversions", "keyevents"]),
-        };
-      })
-      .filter(isBreakdownRow)
-      .slice(0, 8),
-    devicePerformance: rows
-      .map<Record<string, string | number> | null>((row) => {
-        const device = getFirstText(row, ["devicecategory", "device"]);
-
-        if (!device) return null;
-
-        return {
-          device,
-          sessions: getFirstMetric(row, ["sessions"]),
-          conversions: getFirstMetric(row, ["conversions", "keyevents"]),
-        };
-      })
-      .filter(isBreakdownRow)
-      .slice(0, 8),
-    keyEventPerformance: rows
-      .map<Record<string, string | number> | null>((row) => {
-        const eventName = getFirstText(row, [
-          "eventname",
-          "keyevent",
-          "keyeventname",
-          "conversionevent",
-          "conversionname",
-        ]);
-
-        if (!eventName) return null;
-
-        return {
-          eventName,
-          keyEvents: getFirstMetric(row, ["keyevents", "conversions"]),
-        };
-      })
-      .filter(isBreakdownRow)
-      .slice(0, 10),
-  };
+function percentToInput(value: number | null) {
+  return value !== null && Number.isFinite(value) ? String((value * 100).toFixed(1)) : "";
 }
 
 function formatPlanLabel(plan: AccountPlan) {
@@ -276,15 +77,14 @@ export default function ReportForm({ clientId }: { clientId: string }) {
     emptyUploadedAnalytics,
   );
   const [uploadedFileName, setUploadedFileName] = useState("");
-  const [isHydrated, setIsHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const [uploadPending, setUploadPending] = useState(false);
+  const [uploadProblem, setUploadProblem] = useState("");
+  // Synchronous guard also covers submissions before React's next render.
+  const uploadGuard = useRef({ version: 0, pending: false, invalid: false, editErrors: new Set<string>() });
 
   useEffect(() => {
     async function loadBilling() {
@@ -312,33 +112,55 @@ export default function ReportForm({ clientId }: { clientId: string }) {
     loadBilling();
   }, []);
 
+  function chooseAnalyticsSync() {
+    uploadGuard.current.version++;
+    uploadGuard.current.pending = false;
+    uploadGuard.current.invalid = false;
+    uploadGuard.current.editErrors.clear();
+    setUploadPending(false);
+    setUploadProblem("");
+    setErrorMessage("");
+    setUseUploadedAnalytics(false);
+    setUploadedAnalytics(emptyUploadedAnalytics);
+    setUploadedFileName("");
+  }
+
   async function handleAnalyticsUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-
+    const input = e.target;
+    const file = input.files?.[0];
+    const version = ++uploadGuard.current.version;
+    uploadGuard.current.pending = Boolean(file);
+    uploadGuard.current.invalid = false;
+    uploadGuard.current.editErrors.clear();
+    setUseUploadedAnalytics(false);
+    setUploadedAnalytics(emptyUploadedAnalytics);
+    setUploadedFileName("");
+    setUploadProblem("");
+    setErrorMessage("");
+    setUploadPending(Boolean(file));
     if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setErrorMessage("Please upload a CSV file.");
-      e.target.value = "";
-      return;
-    }
-
     try {
+      if (!file.name.toLowerCase().endsWith(".csv")) throw new Error("Choose a CSV file containing Sessions and Conversions (or Key Events).");
+      if (file.size > MAX_CSV_BYTES) throw new Error("CSV size limit exceeded: maximum 5MB.");
       const text = await file.text();
-      const rows = parseCsv(text);
-
-      if (rows.length === 0) {
-        setErrorMessage("No usable rows were found in that CSV.");
-        return;
-      }
-
-      setUploadedAnalytics(detectUploadedAnalytics(rows));
+      if (version !== uploadGuard.current.version) return;
+      const parsed = parseAnalyticsCsv(text);
+      if (!hasValidReportMetrics(parsed)) throw new Error("CSV is missing valid Sessions and Conversions.");
+      setUploadedAnalytics(parsed);
       setUploadedFileName(file.name);
       setUseUploadedAnalytics(true);
-      setErrorMessage("");
-    } catch (error) {
-      console.error(error);
-      setErrorMessage("Failed to read the uploaded CSV.");
+    } catch (error: unknown) {
+      if (version !== uploadGuard.current.version) return;
+      const message = error instanceof Error ? error.message : "Unable to read this CSV. Try exporting it again.";
+      uploadGuard.current.invalid = true;
+      setUploadProblem(message);
+      setErrorMessage(message);
+    } finally {
+      if (version === uploadGuard.current.version) {
+        uploadGuard.current.pending = false;
+        setUploadPending(false);
+        input.value = ""; // Allows selecting the same corrected file again.
+      }
     }
   }
 
@@ -355,23 +177,44 @@ export default function ReportForm({ clientId }: { clientId: string }) {
     value: string,
     isPercent = false,
   ) {
+    uploadGuard.current.editErrors.delete(key);
+    if (value.trim() === "") {
+      setUploadedAnalytics((current) => ({ ...current, [key]: null }));
+      return;
+    }
     const parsed = Number(value);
-    const safeValue = Number.isFinite(parsed) ? parsed : 0;
-
+    const invalid = !Number.isFinite(parsed) || parsed < 0 || (isPercent && parsed > 100);
+    if (invalid) {
+      uploadGuard.current.editErrors.add(key);
+      setErrorMessage("Counts must be non-negative numbers and percentages must be between 0 and 100.");
+    }
     setUploadedAnalytics((current) => ({
       ...current,
-      [key]: isPercent ? safeValue / 100 : safeValue,
+      [key]: Number.isFinite(parsed) ? (isPercent ? parsed / 100 : parsed) : null,
     }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (uploadGuard.current.pending || uploadGuard.current.invalid || uploadGuard.current.editErrors.size) {
+      setErrorMessage(uploadGuard.current.pending
+        ? "Wait for the CSV to finish loading."
+        : "Correct the uploaded file or its measurements, or explicitly choose GA4 sync instead.");
+      return;
+    }
     setLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
     setStatus("Creating report...");
 
     try {
+      if (useUploadedAnalytics && !hasValidReportMetrics(uploadedAnalytics)) {
+        setErrorMessage("Uploaded analytics lacks required valid Sessions and Conversions.");
+        setLoading(false);
+        setStatus("");
+        return;
+      }
+
       const reportRes = await fetch("/api/reports", {
         method: "POST",
         headers: {
@@ -400,9 +243,6 @@ export default function ReportForm({ clientId }: { clientId: string }) {
         setErrorMessage("Report created but no report ID was returned.");
         return;
       }
-
-      // Report creation already acquired and saved Analytics on the server.
-      // Request a summary of that saved record; do not resync or resend metrics.
 
       setStatus("Generating AI summary...");
 
@@ -443,7 +283,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
         <div>
           <h2 className="text-2xl font-semibold">Generate report</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Build a fresh report for this client, then sync analytics and AI insights automatically.
+            Load analytics or validate your CSV, then generate insights from the saved report.
           </p>
         </div>
         <div className="text-sm text-slate-600">
@@ -464,147 +304,153 @@ export default function ReportForm({ clientId }: { clientId: string }) {
           onUpgradeClick={() => router.push("/pricing")}
         />
 
-        {isHydrated && (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-slate-950">
-                  Upload analytics CSV
-                </h3>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Optional. Upload a GA4-style CSV to generate this report from
-                  imported metrics instead of syncing GA4.
-                </p>
-              </div>
-              <label className="inline-flex w-fit cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">
-                Choose CSV
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleAnalyticsUpload}
-                  className="sr-only"
-                />
-              </label>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-slate-950">
+                Upload analytics CSV
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Upload a comma-separated CSV instead of connecting Analytics. Include <code>Sessions</code> and <code>Conversions</code> (or <code>Key Events</code>). Views, Active Users, Bounce Rate, and Engagement Rate are optional.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Use one summary row or a complete table grouped by Channel, Landing Page, or Device—not a mix. Limits: 5 MB and 10,000 rows. Rates must use a percent sign (40%) or a decimal (0.4). Unsupported exports are rejected rather than guessed.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Export the same dates selected above; dates are not detected from the CSV. Missing optional values stay blank. Active users are left unknown when they cannot be totaled reliably.
+              </p>
             </div>
-
-            {uploadedFileName && (
-              <div className="mt-4 rounded-lg border border-emerald-200 bg-white p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-emerald-900">
-                      Using uploaded analytics
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {uploadedFileName}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUseUploadedAnalytics(false);
-                      setUploadedAnalytics(emptyUploadedAnalytics);
-                      setUploadedFileName("");
-                    }}
-                    className="w-fit rounded border border-slate-300 px-3 py-1.5 text-xs font-semibold transition hover:bg-slate-50"
-                  >
-                    Use GA4 sync instead
-                  </button>
-                </div>
-
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Traffic
-                    </label>
-                    <input
-                      type="number"
-                      value={metricToInput(uploadedAnalytics.traffic)}
-                      onChange={(e) =>
-                        updateUploadedMetric("traffic", e.target.value)
-                      }
-                      className="w-full rounded border px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Page Views
-                    </label>
-                    <input
-                      type="number"
-                      value={metricToInput(uploadedAnalytics.pageViews)}
-                      onChange={(e) =>
-                        updateUploadedMetric("pageViews", e.target.value)
-                      }
-                      className="w-full rounded border px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Active Users
-                    </label>
-                    <input
-                      type="number"
-                      value={metricToInput(uploadedAnalytics.activeUsers)}
-                      onChange={(e) =>
-                        updateUploadedMetric("activeUsers", e.target.value)
-                      }
-                      className="w-full rounded border px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Bounce Rate %
-                    </label>
-                    <input
-                      type="number"
-                      value={percentToInput(uploadedAnalytics.bounceRate)}
-                      onChange={(e) =>
-                        updateUploadedMetric("bounceRate", e.target.value, true)
-                      }
-                      className="w-full rounded border px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Engagement Rate %
-                    </label>
-                    <input
-                      type="number"
-                      value={percentToInput(uploadedAnalytics.engagementRate)}
-                      onChange={(e) =>
-                        updateUploadedMetric(
-                          "engagementRate",
-                          e.target.value,
-                          true,
-                        )
-                      }
-                      className="w-full rounded border px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Conversions
-                    </label>
-                    <input
-                      type="number"
-                      value={metricToInput(uploadedAnalytics.conversions)}
-                      onChange={(e) =>
-                        updateUploadedMetric("conversions", e.target.value)
-                      }
-                      className="w-full rounded border px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <p className="mt-3 text-xs leading-6 text-slate-500">
-                  Review these detected metrics before generating. Channel,
-                  landing page, and device rows are included automatically when
-                  the CSV contains matching columns.
-                </p>
-              </div>
-            )}
+            <label className="inline-flex w-fit cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">
+              Choose CSV
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleAnalyticsUpload}
+                className="sr-only"
+              />
+            </label>
           </div>
-        )}
+
+          {uploadPending && <p role="status" className="mt-3 text-sm">Reading CSV…</p>}
+          {uploadProblem && (
+            <div className="mt-3 text-sm">
+              <p>{uploadProblem}</p>
+              <button type="button" onClick={chooseAnalyticsSync} className="mt-2 rounded border px-3 py-2">Use GA4 sync instead</button>
+            </div>
+          )}
+          {uploadedFileName && (
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-white p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-emerald-900">
+                    Using uploaded analytics
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {uploadedFileName}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={chooseAnalyticsSync}
+                  className="w-fit rounded border border-slate-300 px-3 py-1.5 text-xs font-semibold transition hover:bg-slate-50"
+                >
+                  Use GA4 sync instead
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Traffic (Sessions)
+                  </label>
+                  <input
+                    type="number"
+                    value={metricToInput(uploadedAnalytics.traffic)}
+                    onChange={(e) =>
+                      updateUploadedMetric("traffic", e.target.value)
+                    }
+                    className="w-full rounded border px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Page Views
+                  </label>
+                  <input
+                    type="number"
+                    value={metricToInput(uploadedAnalytics.pageViews)}
+                    onChange={(e) =>
+                      updateUploadedMetric("pageViews", e.target.value)
+                    }
+                    className="w-full rounded border px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Active Users
+                  </label>
+                  <input
+                    type="number"
+                    value={metricToInput(uploadedAnalytics.activeUsers)}
+                    onChange={(e) =>
+                      updateUploadedMetric("activeUsers", e.target.value)
+                    }
+                    className="w-full rounded border px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Bounce Rate %
+                  </label>
+                  <input
+                    type="number"
+                    value={percentToInput(uploadedAnalytics.bounceRate)}
+                    onChange={(e) =>
+                      updateUploadedMetric("bounceRate", e.target.value, true)
+                    }
+                    className="w-full rounded border px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Engagement Rate %
+                  </label>
+                  <input
+                    type="number"
+                    value={percentToInput(uploadedAnalytics.engagementRate)}
+                    onChange={(e) =>
+                      updateUploadedMetric(
+                        "engagementRate",
+                        e.target.value,
+                        true,
+                      )
+                    }
+                    className="w-full rounded border px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Conversions
+                  </label>
+                  <input
+                    type="number"
+                    value={metricToInput(uploadedAnalytics.conversions)}
+                    onChange={(e) =>
+                      updateUploadedMetric("conversions", e.target.value)
+                    }
+                    className="w-full rounded border px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs leading-6 text-slate-500">
+                Review these detected metrics before generating. Channel,
+                landing page, and device rows are included automatically when
+                the CSV contains matching columns. Blank means unknown.
+              </p>
+            </div>
+          )}
+        </div>
 
         <div>
           <label className="mb-1 block text-sm font-medium">Notes</label>
@@ -636,7 +482,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
           <button
             type="submit"
             suppressHydrationWarning
-            disabled={loading}
+            disabled={loading || uploadPending}
             className="w-fit rounded bg-black px-4 py-2 text-white disabled:opacity-50"
           >
             {loading ? "Working..." : "Generate Report"}

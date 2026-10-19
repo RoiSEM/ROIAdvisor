@@ -121,7 +121,7 @@ test('AI rejects incomplete saved analytics instead of using browser replacement
 test('report form uses the completed server report without a second analytics sync or browser metric payload', async () => {
   const calls = [];
   const Form = load('app/components/report-form.tsx', {
-    react: { useState: initial => [initial, () => {}], useEffect() {}, useMemo: fn => fn() },
+    react: { useState: initial => [initial, () => {}], useRef: initial => ({ current: initial }), useEffect() {}, useMemo: fn => fn() },
     'next/navigation': { useRouter: () => ({ refresh() {} }) },
     '@/components/calendar': { ReportDatePicker() {} },
     '@/components/service-cta': { default() {}, __esModule: true },
