@@ -401,35 +401,8 @@ export default function ReportForm({ clientId }: { clientId: string }) {
         return;
       }
 
-      let reportMetrics = {
-        traffic: uploadedAnalytics.traffic,
-        pageViews: uploadedAnalytics.pageViews,
-        activeUsers: uploadedAnalytics.activeUsers,
-        bounceRate: uploadedAnalytics.bounceRate,
-        engagementRate: uploadedAnalytics.engagementRate,
-        conversions: uploadedAnalytics.conversions,
-        channelPerformance: uploadedAnalytics.channelPerformance,
-        landingPagePerformance: uploadedAnalytics.landingPagePerformance,
-        devicePerformance: uploadedAnalytics.devicePerformance,
-        keyEventPerformance: uploadedAnalytics.keyEventPerformance,
-      };
-
-      if (!useUploadedAnalytics) {
-        setStatus("Syncing analytics...");
-
-        const syncRes = await fetch(`/api/reports/${reportId}/sync-analytics`, {
-          method: "POST",
-        });
-
-        const syncData = await syncRes.json();
-
-        if (!syncRes.ok) {
-          setErrorMessage(syncData.error || "Failed to sync analytics");
-          return;
-        }
-
-        reportMetrics = syncData;
-      }
+      // Report creation already acquired and saved Analytics on the server.
+      // Request a summary of that saved record; do not resync or resend metrics.
 
       setStatus("Generating AI summary...");
 
@@ -438,21 +411,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          reportId,
-          month: reportData?.report?.month ?? null,
-          traffic: reportMetrics.traffic,
-          pageViews: reportMetrics.pageViews,
-          activeUsers: reportMetrics.activeUsers,
-          bounceRate: reportMetrics.bounceRate,
-          engagementRate: reportMetrics.engagementRate,
-          conversions: reportMetrics.conversions,
-          channelPerformance: reportMetrics.channelPerformance,
-          landingPagePerformance: reportMetrics.landingPagePerformance,
-          devicePerformance: reportMetrics.devicePerformance,
-          keyEventPerformance: reportMetrics.keyEventPerformance,
-          notes,
-        }),
+        body: JSON.stringify({ reportId }),
       });
 
       const aiData = await aiRes.json();

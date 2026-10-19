@@ -1,6 +1,7 @@
 import { appData } from "@/lib/data-store";
 import OpenAI from "openai";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
+import { hasValidReportMetrics } from "@/lib/report-metrics";
 import {
   buildSummaryPrompt,
   type SummaryClientData,
@@ -23,21 +24,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const {
-      reportId,
-      month,
-      traffic,
-      pageViews,
-      activeUsers,
-      bounceRate,
-      engagementRate,
-      conversions,
-      channelPerformance,
-      landingPagePerformance,
-      devicePerformance,
-      keyEventPerformance,
-      notes,
-    } = body;
+    // Only the identifier is accepted from the browser. Analysis inputs are
+    // loaded from the saved report after its owner is verified below.
+    const { reportId } = body;
 
     if (!reportId) {
       return Response.json({ error: "reportId is required" }, { status: 400 });
@@ -45,7 +34,7 @@ export async function POST(req: Request) {
 
     const { data: report, error: reportError } = await appData
       .from("reports")
-      .select("id, client_id")
+      .select("*")
       .eq("id", reportId)
       .single();
 
@@ -71,27 +60,36 @@ export async function POST(req: Request) {
       );
     }
 
+    if (
+      typeof report.month !== "string" || !report.month.trim() ||
+      !hasValidReportMetrics({
+        traffic: report.traffic,
+        conversions: report.conversions,
+        pageViews: report.page_views,
+        activeUsers: report.active_users,
+        bounceRate: report.bounce_rate,
+        engagementRate: report.engagement_rate,
+      })
+    ) {
+      return Response.json(
+        { error: "This report has incomplete or invalid analytics. Sync analytics or create a valid uploaded report before generating a summary." },
+        { status: 409 },
+      );
+    }
+
     const reportData: SummaryReportData = {
-      month: month ?? null,
-      traffic: traffic ?? null,
-      page_views: pageViews ?? null,
-      active_users: activeUsers ?? null,
-      bounce_rate: bounceRate ?? null,
-      engagement_rate: engagementRate ?? null,
-      conversions: conversions ?? null,
-      channel_performance: Array.isArray(channelPerformance)
-        ? channelPerformance
-        : null,
-      landing_page_performance: Array.isArray(landingPagePerformance)
-        ? landingPagePerformance
-        : null,
-      device_performance: Array.isArray(devicePerformance)
-        ? devicePerformance
-        : null,
-      key_event_performance: Array.isArray(keyEventPerformance)
-        ? keyEventPerformance
-        : null,
-      notes: notes ?? null,
+      month: report.month ?? null,
+      traffic: report.traffic ?? null,
+      page_views: report.page_views ?? null,
+      active_users: report.active_users ?? null,
+      bounce_rate: report.bounce_rate ?? null,
+      engagement_rate: report.engagement_rate ?? null,
+      conversions: report.conversions ?? null,
+      channel_performance: Array.isArray(report.channel_performance) ? report.channel_performance : null,
+      landing_page_performance: Array.isArray(report.landing_page_performance) ? report.landing_page_performance : null,
+      device_performance: Array.isArray(report.device_performance) ? report.device_performance : null,
+      key_event_performance: Array.isArray(report.key_event_performance) ? report.key_event_performance : null,
+      notes: report.notes ?? null,
     };
 
     const prompt = buildSummaryPrompt({

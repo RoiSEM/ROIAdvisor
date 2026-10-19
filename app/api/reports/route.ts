@@ -2,6 +2,8 @@ import { appData } from "@/lib/data-store";
 import { NextRequest } from "next/server";
 import { getBillingSnapshot, type AccountPlan } from "@/lib/billing";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
+import { getGA4Report } from "@/lib/analytics/ga4";
+import { hasValidReportMetrics } from "@/lib/report-metrics";
 
 const TRIAL_REPORT_LIMIT = 3;
 
@@ -180,12 +182,13 @@ export async function POST(req: Request) {
     const clientId = body.client_id as string | undefined;
     let planTier: AccountPlan = "free";
     const requestedNotes = typeof body.notes === "string" ? body.notes.trim() : "";
-    const uploadedAnalytics =
-      body.analytics_source === "upload" &&
-      body.uploaded_analytics &&
-      typeof body.uploaded_analytics === "object"
-        ? (body.uploaded_analytics as Record<string, unknown>)
-        : null;
+    const uploadedAnalytics = body.analytics_source === "upload" ? body.uploaded_analytics : null;
+    if (body.analytics_source === "upload" && !hasValidReportMetrics(uploadedAnalytics)) {
+      return Response.json(
+        { error: "Upload must include valid non-negative traffic and conversion measurements. Rates must be between 0 and 1." },
+        { status: 400 },
+      );
+    }
 
     const requestedStartDate = body.start_date as string | undefined;
     const requestedEndDate = body.end_date as string | undefined;
@@ -196,7 +199,7 @@ export async function POST(req: Request) {
 
     let clientQuery = appData
       .from("clients")
-      .select("id, approval_status")
+      .select("id, approval_status, ga4_property_id")
       .eq("id", clientId);
 
     if (!isAdminUser(user)) {
@@ -261,46 +264,35 @@ export async function POST(req: Request) {
       }
     }
 
-    const traffic =
-      typeof uploadedAnalytics?.traffic === "number"
-        ? uploadedAnalytics.traffic
-        : Math.floor(Math.random() * 5000) + 500;
-    const conversions =
-      typeof uploadedAnalytics?.conversions === "number"
-        ? uploadedAnalytics.conversions
-        : Math.floor(Math.random() * 100) + 5;
-    const pageViews =
-      typeof uploadedAnalytics?.pageViews === "number"
-        ? uploadedAnalytics.pageViews
-        : undefined;
-    const activeUsers =
-      typeof uploadedAnalytics?.activeUsers === "number"
-        ? uploadedAnalytics.activeUsers
-        : undefined;
-    const bounceRate =
-      typeof uploadedAnalytics?.bounceRate === "number"
-        ? uploadedAnalytics.bounceRate
-        : undefined;
-    const engagementRate =
-      typeof uploadedAnalytics?.engagementRate === "number"
-        ? uploadedAnalytics.engagementRate
-        : undefined;
-    const channelPerformance = Array.isArray(uploadedAnalytics?.channelPerformance)
-      ? uploadedAnalytics.channelPerformance
-      : undefined;
-    const landingPagePerformance = Array.isArray(
-      uploadedAnalytics?.landingPagePerformance,
-    )
-      ? uploadedAnalytics.landingPagePerformance
-      : undefined;
-    const devicePerformance = Array.isArray(uploadedAnalytics?.devicePerformance)
-      ? uploadedAnalytics.devicePerformance
-      : undefined;
-    const keyEventPerformance = Array.isArray(
-      uploadedAnalytics?.keyEventPerformance,
-    )
-      ? uploadedAnalytics.keyEventPerformance
-      : undefined;
+    // Acquire real data before inserting: a failed sync must not leave a
+    // customer-visible report with placeholder metrics or consume a report slot.
+    let analytics = uploadedAnalytics;
+    if (!analytics) {
+      if (!client.ga4_property_id) {
+        return Response.json({ error: "Connect Google Analytics before running this report." }, { status: 400 });
+      }
+      try {
+        analytics = await getGA4Report(client.ga4_property_id, allowedRange);
+      } catch {
+        return Response.json(
+          { error: "Unable to load Google Analytics. No report was saved. Check access and try again." },
+          { status: 502 },
+        );
+      }
+    }
+    if (!hasValidReportMetrics(analytics)) {
+      return Response.json({ error: "Analytics returned incomplete or invalid measurements. No report was saved." }, { status: 502 });
+    }
+    const traffic = analytics.traffic;
+    const conversions = analytics.conversions;
+    const pageViews = typeof analytics.pageViews === "number" ? analytics.pageViews : undefined;
+    const activeUsers = typeof analytics.activeUsers === "number" ? analytics.activeUsers : undefined;
+    const bounceRate = typeof analytics.bounceRate === "number" ? analytics.bounceRate : undefined;
+    const engagementRate = typeof analytics.engagementRate === "number" ? analytics.engagementRate : undefined;
+    const channelPerformance = Array.isArray(analytics.channelPerformance) ? analytics.channelPerformance : undefined;
+    const landingPagePerformance = Array.isArray(analytics.landingPagePerformance) ? analytics.landingPagePerformance : undefined;
+    const devicePerformance = Array.isArray(analytics.devicePerformance) ? analytics.devicePerformance : undefined;
+    const keyEventPerformance = Array.isArray(analytics.keyEventPerformance) ? analytics.keyEventPerformance : undefined;
     const topPages = Array.isArray(landingPagePerformance)
       ? landingPagePerformance
           .map((item) =>
@@ -310,7 +302,7 @@ export async function POST(req: Request) {
           )
           .filter((item): item is string => Boolean(item))
           .slice(0, 5)
-      : ["/", "/services", "/contact"];
+      : [];
 
     const month = `${allowedRange.startDate} to ${allowedRange.endDate}`;
     const systemNote = billingSnapshot.canUseCustomDateRange
