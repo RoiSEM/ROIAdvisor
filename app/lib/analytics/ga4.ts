@@ -94,9 +94,9 @@ export async function getGA4Report(
 
   const property = `properties/${propertyId}`;
   const dateRanges = [{ startDate, endDate }];
+  const requestOptions = { timeout: 30_000, retry: null };
 
-  const [summaryResponse, channelResponse, landingPageResponse, deviceResponse] =
-    await Promise.all([
+  const responses = await Promise.allSettled([
       client.runReport({
         property,
         dateRanges,
@@ -108,7 +108,7 @@ export async function getGA4Report(
           { name: "engagementRate" },
           { name: "conversions" },
         ],
-      }),
+      }, requestOptions),
       client.runReport({
         property,
         dateRanges,
@@ -124,7 +124,7 @@ export async function getGA4Report(
         ],
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
         limit: 8,
-      }),
+      }, requestOptions),
       client.runReport({
         property,
         dateRanges,
@@ -137,7 +137,7 @@ export async function getGA4Report(
         ],
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
         limit: 8,
-      }),
+      }, requestOptions),
       client.runReport({
         property,
         dateRanges,
@@ -150,8 +150,14 @@ export async function getGA4Report(
         ],
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
         limit: 5,
-      }),
+      }, requestOptions),
     ]);
+  // Do not release the caller's usage lease while admitted sibling calls are
+  // still running after an early failure. Every SDK call also has a deadline.
+  const [summaryResponse, channelResponse, landingPageResponse, deviceResponse] = responses.map((response) => {
+    if (response.status === "rejected") throw response.reason;
+    return response.value;
+  });
   const [keyEventResponse] = await client.runReport({
     property,
     dateRanges,
@@ -159,8 +165,8 @@ export async function getGA4Report(
     metrics: [{ name: "keyEvents" }],
     orderBys: [{ metric: { metricName: "keyEvents" }, desc: true }],
     limit: 10,
-  }).catch((error) => {
-    console.warn("Unable to load GA4 key events:", error);
+  }, requestOptions).catch(() => {
+    console.warn("Unable to load GA4 key events.");
     return [{ rows: [] }];
   });
 

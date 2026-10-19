@@ -5,7 +5,7 @@ import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import { getGA4Report } from "@/lib/analytics/ga4";
 import { hasValidReportMetrics } from "@/lib/report-metrics";
 
-const TRIAL_REPORT_LIMIT = 3;
+import { getReportAllowance, withUsage } from "@/lib/usage";
 
 function getMissingColumnName(message: string | undefined) {
   if (!message) return null;
@@ -199,7 +199,7 @@ export async function POST(req: Request) {
 
     let clientQuery = appData
       .from("clients")
-      .select("id, approval_status, ga4_property_id")
+      .select("id, user_id, approval_status, ga4_property_id")
       .eq("id", clientId);
 
     if (!isAdminUser(user)) {
@@ -222,150 +222,137 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: billing } = await appData
-      .from("billing_accounts")
-      .select("plan, status")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    return await withUsage(user.id, "report", async () => {
+      const { data: billing, error: billingError } = await appData
+        .from("billing_accounts")
+        .select("plan, status")
+        .eq("user_id", client.user_id ?? user.id)
+        .maybeSingle();
 
-    const billingSnapshot = getBillingSnapshot(billing);
-
-    planTier = billingSnapshot.effectivePlan;
-
-    const allowedRange = resolveAllowedDateRange({
-      hasCustomDateRangeAccess: billingSnapshot.canUseCustomDateRange,
-      requestedStartDate,
-      requestedEndDate,
-    });
-
-    if (!billingSnapshot.hasUnlimitedReports) {
-      const { count, error: countError } = await appData
-        .from("reports")
-        .select("id", { count: "exact", head: true })
-        .eq("client_id", clientId)
-        .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
-
-      if (countError) {
-        return Response.json({ error: countError.message }, { status: 500 });
+      if (billingError) {
+        return Response.json({ error: "Unable to verify account access. Try again shortly." }, { status: 503 });
       }
 
-      const reportsUsed = count ?? 0;
+      const billingSnapshot = getBillingSnapshot(billing);
 
-      if (reportsUsed >= TRIAL_REPORT_LIMIT) {
+      planTier = billingSnapshot.effectivePlan;
+
+      const allowedRange = resolveAllowedDateRange({
+        hasCustomDateRangeAccess: billingSnapshot.canUseCustomDateRange,
+        requestedStartDate,
+        requestedEndDate,
+      });
+
+      // This precheck avoids provider work when already at quota. The database
+      // trigger performs the final atomic check and records usage with the insert.
+      const allowance = await getReportAllowance(clientId);
+      if (allowance.remaining === 0) {
         return Response.json(
-          {
-            error:
-              planTier === "starter"
-                ? `Starter accounts are limited to ${TRIAL_REPORT_LIMIT} reports per cycle. Upgrade to Pro to continue.`
-                : `Free access is limited to ${TRIAL_REPORT_LIMIT} reports per cycle. Choose Starter or upgrade to continue.`,
-          },
+          { error: `This website has used its ${allowance.limit} reports for this calendar month. Upgrade to Pro for unlimited reports.` },
           { status: 403 },
         );
       }
-    }
 
-    // Acquire real data before inserting: a failed sync must not leave a
-    // customer-visible report with placeholder metrics or consume a report slot.
-    let analytics = uploadedAnalytics;
-    if (!analytics) {
-      if (!client.ga4_property_id) {
-        return Response.json({ error: "Connect Google Analytics before running this report." }, { status: 400 });
+      // Acquire real data before inserting: a failed sync must not leave a
+      // customer-visible report with placeholder metrics or consume a report slot.
+      let analytics = uploadedAnalytics;
+      if (!analytics) {
+        if (!client.ga4_property_id) {
+          return Response.json({ error: "Connect Google Analytics before running this report." }, { status: 400 });
+        }
+        try {
+          analytics = await getGA4Report(client.ga4_property_id, allowedRange);
+        } catch {
+          return Response.json(
+            { error: "Unable to load Google Analytics. No report was saved. Check access and try again." },
+            { status: 502 },
+          );
+        }
       }
-      try {
-        analytics = await getGA4Report(client.ga4_property_id, allowedRange);
-      } catch {
-        return Response.json(
-          { error: "Unable to load Google Analytics. No report was saved. Check access and try again." },
-          { status: 502 },
-        );
+      if (!hasValidReportMetrics(analytics)) {
+        return Response.json({ error: "Analytics returned incomplete or invalid measurements. No report was saved." }, { status: 502 });
       }
-    }
-    if (!hasValidReportMetrics(analytics)) {
-      return Response.json({ error: "Analytics returned incomplete or invalid measurements. No report was saved." }, { status: 502 });
-    }
-    const traffic = analytics.traffic;
-    const conversions = analytics.conversions;
-    const pageViews = typeof analytics.pageViews === "number" ? analytics.pageViews : undefined;
-    const activeUsers = typeof analytics.activeUsers === "number" ? analytics.activeUsers : undefined;
-    const bounceRate = typeof analytics.bounceRate === "number" ? analytics.bounceRate : undefined;
-    const engagementRate = typeof analytics.engagementRate === "number" ? analytics.engagementRate : undefined;
-    const channelPerformance = Array.isArray(analytics.channelPerformance) ? analytics.channelPerformance : undefined;
-    const landingPagePerformance = Array.isArray(analytics.landingPagePerformance) ? analytics.landingPagePerformance : undefined;
-    const devicePerformance = Array.isArray(analytics.devicePerformance) ? analytics.devicePerformance : undefined;
-    const keyEventPerformance = Array.isArray(analytics.keyEventPerformance) ? analytics.keyEventPerformance : undefined;
-    const topPages = Array.isArray(landingPagePerformance)
-      ? landingPagePerformance
-          .map((item) =>
-            item && typeof item === "object" && "landingPage" in item
-              ? String(item.landingPage)
-              : null,
-          )
-          .filter((item): item is string => Boolean(item))
-          .slice(0, 5)
-      : [];
+      const traffic = analytics.traffic;
+      const conversions = analytics.conversions;
+      const pageViews = typeof analytics.pageViews === "number" ? analytics.pageViews : undefined;
+      const activeUsers = typeof analytics.activeUsers === "number" ? analytics.activeUsers : undefined;
+      const bounceRate = typeof analytics.bounceRate === "number" ? analytics.bounceRate : undefined;
+      const engagementRate = typeof analytics.engagementRate === "number" ? analytics.engagementRate : undefined;
+      const channelPerformance = Array.isArray(analytics.channelPerformance) ? analytics.channelPerformance : undefined;
+      const landingPagePerformance = Array.isArray(analytics.landingPagePerformance) ? analytics.landingPagePerformance : undefined;
+      const devicePerformance = Array.isArray(analytics.devicePerformance) ? analytics.devicePerformance : undefined;
+      const keyEventPerformance = Array.isArray(analytics.keyEventPerformance) ? analytics.keyEventPerformance : undefined;
+      const topPages = Array.isArray(landingPagePerformance)
+        ? landingPagePerformance
+            .map((item) =>
+              item && typeof item === "object" && "landingPage" in item
+                ? String(item.landingPage)
+                : null,
+            )
+            .filter((item): item is string => Boolean(item))
+            .slice(0, 5)
+        : [];
 
-    const month = `${allowedRange.startDate} to ${allowedRange.endDate}`;
-    const systemNote = billingSnapshot.canUseCustomDateRange
-      ? "Custom date range applied successfully."
-      : planTier === "starter"
-        ? "Starter range applied automatically. Upgrade to Pro for custom dates."
-        : "Free range applied automatically. Choose Starter or upgrade for custom dates.";
-    const uploadNote = uploadedAnalytics
-      ? "Analytics metrics were imported from an uploaded CSV."
-      : "";
-    const notes = [requestedNotes, uploadNote, systemNote]
-      .filter(Boolean)
-      .join("\n\n");
+      const month = `${allowedRange.startDate} to ${allowedRange.endDate}`;
+      const systemNote = billingSnapshot.canUseCustomDateRange
+        ? "Custom date range applied successfully."
+        : planTier === "starter"
+          ? "Starter range applied automatically. Upgrade to Pro for custom dates."
+          : "Free range applied automatically. Choose Starter or upgrade for custom dates.";
+      const uploadNote = uploadedAnalytics
+        ? "Analytics metrics were imported from an uploaded CSV."
+        : "";
+      const notes = [requestedNotes, uploadNote, systemNote]
+        .filter(Boolean)
+        .join("\n\n");
 
-    const { data, error } = await createReportWithSchemaFallback({
-      client_id: clientId,
-      month,
-      traffic,
-      page_views: pageViews,
-      active_users: activeUsers,
-      bounce_rate: bounceRate,
-      engagement_rate: engagementRate,
-      conversions,
-      channel_performance: channelPerformance,
-      landing_page_performance: landingPagePerformance,
-      device_performance: devicePerformance,
-      key_event_performance: keyEventPerformance,
-      top_pages: topPages,
-      notes,
-      start_date: allowedRange.startDate,
-      end_date: allowedRange.endDate,
+      const { data, error } = await createReportWithSchemaFallback({
+        client_id: clientId,
+        month,
+        traffic,
+        page_views: pageViews,
+        active_users: activeUsers,
+        bounce_rate: bounceRate,
+        engagement_rate: engagementRate,
+        conversions,
+        channel_performance: channelPerformance,
+        landing_page_performance: landingPagePerformance,
+        device_performance: devicePerformance,
+        key_event_performance: keyEventPerformance,
+        top_pages: topPages,
+        notes,
+        start_date: allowedRange.startDate,
+        end_date: allowedRange.endDate,
+      });
+
+      if (error) {
+        if (error.code === "REPORT_LIMIT" || (error.code === "P0001" && error.message === "REPORT_QUOTA_EXCEEDED")) {
+          return Response.json({ error: "This website has reached its report limit for this calendar month." }, { status: 403 });
+        }
+        return Response.json({ error: "Unable to save report. Try again shortly." }, { status: 500 });
+      }
+
+      // A failed post-commit meter read must not turn a saved report into a failed
+      // request that encourages duplicate creation. Unknown is not unlimited.
+      const updatedAllowance = await getReportAllowance(clientId).catch(() => null);
+
+      return Response.json(
+        {
+          message:
+            billingSnapshot.canUseCustomDateRange
+              ? `${planTier === "agency" ? "Agency" : "Pro"} report generated successfully.`
+              : planTier === "starter"
+                ? "Starter report generated successfully with the last 30 days applied."
+                : "Free report generated successfully with the last 30 days applied.",
+          report: data,
+          reports_remaining: updatedAllowance?.remaining ?? null,
+          usage_remaining_known: updatedAllowance !== null,
+          applied_range: allowedRange,
+          analytics_source: uploadedAnalytics ? "upload" : "ga4",
+        },
+        { status: 201 },
+      );
     });
-
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
-    }
-
-    const { count: updatedCount } = await appData
-      .from("reports")
-      .select("id", { count: "exact", head: true })
-      .eq("client_id", clientId)
-      .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
-
-    const reportsRemaining =
-      !billingSnapshot.hasUnlimitedReports
-        ? Math.max(TRIAL_REPORT_LIMIT - (updatedCount ?? 0), 0)
-        : null;
-
-    return Response.json(
-      {
-        message:
-          billingSnapshot.canUseCustomDateRange
-            ? `${planTier === "agency" ? "Agency" : "Pro"} report generated successfully.`
-            : planTier === "starter"
-              ? "Starter report generated successfully with the last 30 days applied."
-              : "Free report generated successfully with the last 30 days applied.",
-        report: data,
-        reports_remaining: reportsRemaining,
-        applied_range: allowedRange,
-        analytics_source: uploadedAnalytics ? "upload" : "ga4",
-      },
-      { status: 201 },
-    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to generate report.";

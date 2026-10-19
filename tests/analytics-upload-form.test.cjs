@@ -3,17 +3,25 @@ const assert = require('node:assert/strict');
 const {test} = require('node:test');
 const fs = require('node:fs');const path = require('node:path');const vm = require('node:vm');const ts = require('typescript');
 const root=path.join(__dirname,'..');
-function harness(){
- const slots=[];let cursor=0;const requests=[];
+function harness(options={}){
+ const slots=[];let cursor=0;const requests=[];const refreshes=[];
  const hooks={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value}];},useRef(initial){const i=cursor++;if(!(i in slots))slots[i]={current:initial};return slots[i];},useMemo:fn=>fn(),useEffect(){}};
- const globals={Response,TextEncoder,console:{error(){},warn(){}},fetch:async(url,init)=>{requests.push({url,body:init?.body?JSON.parse(init.body):null});return Response.json(url==='/api/reports'?{report:{id:'report'}}:{summary:'fixture'});}};
- function load(file){const mod={exports:{}};const filename=path.join(root,file);vm.runInNewContext(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:mod,exports:mod.exports,...globals,require(name){if(name==='react')return hooks;if(name==='react/jsx-runtime')return {jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};if(name==='next/navigation')return {useRouter:()=>({refresh(){},push(){}})};if(name==='@/components/calendar')return {ReportDatePicker(){}};if(name==='@/components/service-cta')return {default(){},__esModule:true};if(name.startsWith('@/lib/'))return load('app/lib/'+name.slice(6)+'.ts');return require(name);}});return mod.exports;}
+ const globals={Response,TextEncoder,console:{error(){},warn(){}},fetch:async(url,init)=>{requests.push({url,body:init?.body?JSON.parse(init.body):null});if(url==='/api/ai-summary'&&options.aiNetworkFailure)throw new Error('Fixture network failure');if(url==='/api/ai-summary'&&options.aiLimited)return Response.json({error:'Too many requests.'},{status:429});return Response.json(url==='/api/reports'?{report:{id:'report'}}:{summary:'fixture'});}};
+ function load(file){const mod={exports:{}};const filename=path.join(root,file);vm.runInNewContext(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{module:mod,exports:mod.exports,...globals,require(name){if(name==='react')return hooks;if(name==='react/jsx-runtime')return {jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};if(name==='next/navigation')return {useRouter:()=>({refresh(){refreshes.push(true)},push(){}})};if(name==='@/components/calendar')return {ReportDatePicker(){}};if(name==='@/components/service-cta')return {default(){},__esModule:true};if(name.startsWith('@/lib/'))return load('app/lib/'+name.slice(6)+'.ts');return require(name);}});return mod.exports;}
  const Form=load('app/components/report-form.tsx').default;
  const render=()=>{cursor=0;return Form({clientId:'client'});};
  function nodes(node){if(Array.isArray(node))return node.flatMap(nodes);if(!node||typeof node!=='object')return [];return [node,...nodes(node.props?.children)];}
  function text(node){if(Array.isArray(node))return node.map(text).join(' ');if(node&&typeof node==='object')return text(node.props?.children);return node==null?'':String(node);}
- return {requests,render,nodes,text,async choose(content,name='file.csv',size){const input=nodes(render()).find(n=>n.type==='input'&&n.props.type==='file');return input.props.onChange({target:{files:[{name,size:size??Buffer.byteLength(typeof content==='string'?content:''),text:async()=>typeof content==='string'?content:await content}],value:name}});},async submit(){return render().props.onSubmit({preventDefault(){}});},number(index){return nodes(render()).filter(n=>n.type==='input'&&n.props.type==='number')[index];}};
+ return {requests,refreshes,render,nodes,text,async choose(content,name='file.csv',size){const input=nodes(render()).find(n=>n.type==='input'&&n.props.type==='file');return input.props.onChange({target:{files:[{name,size:size??Buffer.byteLength(typeof content==='string'?content:''),text:async()=>typeof content==='string'?content:await content}],value:name}});},async submit(){return render().props.onSubmit({preventDefault(){}});},number(index){return nodes(render()).filter(n=>n.type==='input'&&n.props.type==='number')[index];}};
 }
+
+test('saved reports remain visible when AI is rate-limited or its network call fails',async()=>{
+ for(const options of [{aiLimited:true},{aiNetworkFailure:true}]){
+  const h=harness(options);await h.choose('Sessions,Conversions\n100,10');await h.submit();
+  assert.match(h.text(h.render()),/Report saved/i);assert.match(h.text(h.render()),/Retry.*summary/i);
+  assert.equal(h.refreshes.length,1);assert.equal(h.requests.filter(r=>r.url==='/api/reports').length,1);
+ }
+});
 
 test('real form preserves zero in preview while optional missing metrics remain blank',async()=>{
  const h=harness();await h.choose('Sessions,Conversions\n0,0');assert.equal(h.number(0).props.value,'0');assert.equal(h.number(1).props.value,'');assert.equal(h.number(5).props.value,'0');

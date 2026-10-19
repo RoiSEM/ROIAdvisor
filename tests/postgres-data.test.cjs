@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const fs = require('node:fs');
@@ -10,10 +11,10 @@ function load() {
   const source = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  const module = { exports: {} };
+  const mod = { exports: {} };
   const env = {};
-  vm.runInNewContext(source, { module, exports: module.exports, require, process: { env }, console }, { filename });
-  return { ...module.exports, env };
+  vm.runInNewContext(source, { module: mod, exports: mod.exports, require, process: { env }, console }, { filename });
+  return { ...mod.exports, env };
 }
 
 // SQL generation tests use an explicit executor stub. The live SQL adapter was
@@ -66,6 +67,15 @@ test('count-only queries return counts rather than fake data rows', async () => 
   const result = await new PostgresQuery('clients', executor).select('id', { count: 'exact', head: true });
   assert.equal(result.count, 12);
   assert.equal(result.data, null);
+});
+
+test('only the known quota exception is mapped to a safe policy denial',async()=>{
+ const {PostgresQuery}=load();
+ for(const [message,expected] of [['REPORT_QUOTA_EXCEEDED','REPORT_LIMIT'],['private server diagnostic','DATABASE_ERROR']]) {
+  const executor=()=>({query:async()=>{throw Object.assign(new Error(message),{code:'P0001'})}});
+  const result=await new PostgresQuery('reports',executor).insert({client_id:'fixture'}).select().single();
+  assert.equal(result.error.code,expected);assert.doesNotMatch(result.error.message,/private server diagnostic/);
+ }
 });
 
 test('driver errors never expose raw connection messages and optional columns support fallback', async () => {

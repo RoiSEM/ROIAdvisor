@@ -1,6 +1,7 @@
 import { appData } from "@/lib/data-store";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import { GoogleAnalyticsConfigError, getGA4Report } from "@/lib/analytics/ga4";
+import { withUsage } from "@/lib/usage";
 
 function getMissingColumnName(message: string | undefined) {
   if (!message) return null;
@@ -132,55 +133,57 @@ export async function POST(
       );
     }
 
-    const {
-      traffic,
-      pageViews,
-      activeUsers,
-      bounceRate,
-      engagementRate,
-      conversions,
-      channelPerformance,
-      landingPagePerformance,
-      devicePerformance,
-      keyEventPerformance,
-    } = await getGA4Report(client.ga4_property_id, {
-        startDate: analyticsReport.start_date ?? null,
-        endDate: analyticsReport.end_date ?? null,
+    return await withUsage(user.id, "sync", async () => {
+      const {
+        traffic,
+        pageViews,
+        activeUsers,
+        bounceRate,
+        engagementRate,
+        conversions,
+        channelPerformance,
+        landingPagePerformance,
+        devicePerformance,
+        keyEventPerformance,
+      } = await getGA4Report(client.ga4_property_id, {
+          startDate: analyticsReport.start_date ?? null,
+          endDate: analyticsReport.end_date ?? null,
+        });
+
+      const updateError = await updateReportAnalyticsWithSchemaFallback(id, {
+        traffic,
+        page_views: pageViews,
+        active_users: activeUsers,
+        bounce_rate: bounceRate,
+        engagement_rate: engagementRate,
+        conversions,
+        channel_performance: channelPerformance,
+        landing_page_performance: landingPagePerformance,
+        device_performance: devicePerformance,
+        key_event_performance: keyEventPerformance,
+        analytics_synced_at: new Date().toISOString(),
       });
 
-    const updateError = await updateReportAnalyticsWithSchemaFallback(id, {
-      traffic,
-      page_views: pageViews,
-      active_users: activeUsers,
-      bounce_rate: bounceRate,
-      engagement_rate: engagementRate,
-      conversions,
-      channel_performance: channelPerformance,
-      landing_page_performance: landingPagePerformance,
-      device_performance: devicePerformance,
-      key_event_performance: keyEventPerformance,
-      analytics_synced_at: new Date().toISOString(),
-    });
+      if (updateError) {
+        return Response.json(
+          { error: "Failed to update report analytics" },
+          { status: 500 },
+        );
+      }
 
-    if (updateError) {
-      return Response.json(
-        { error: "Failed to update report analytics" },
-        { status: 500 },
-      );
-    }
-
-    return Response.json({
-      success: true,
-      traffic,
-      pageViews,
-      activeUsers,
-      bounceRate,
-      engagementRate,
-      conversions,
-      channelPerformance,
-      landingPagePerformance,
-      devicePerformance,
-      keyEventPerformance,
+      return Response.json({
+        success: true,
+        traffic,
+        pageViews,
+        activeUsers,
+        bounceRate,
+        engagementRate,
+        conversions,
+        channelPerformance,
+        landingPagePerformance,
+        devicePerformance,
+        keyEventPerformance,
+      });
     });
   } catch (error) {
     console.error("Sync analytics error:", error);

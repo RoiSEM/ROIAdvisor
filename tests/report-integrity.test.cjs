@@ -26,7 +26,7 @@ function load(file, deps = {}, globals = {}) {
   return mod.exports;
 }
 function fixture(options = {}) {
-  const state = { rows: [], gaCalls: [], aiCalls: [], promptReports: [], selectedReports: [], writes: 0 };
+  const state = { rows: [], gaCalls: [], aiCalls: [], promptReports: [], selectedReports: [], writes: 0, usageCalls: [], allowanceCalls: [], aiInitializations: 0, aiConfigurations: [] };
   const client = { id: 'client-fixture', user_id: 'owner', approval_status: 'approved', ga4_property_id: '123456', ...options.client };
   const metrics = { traffic: 458, conversions: 39, pageViews: 648, activeUsers: 377, bounceRate: 0.598, engagementRate: 0.402, channelPerformance: [], landingPagePerformance: [], devicePerformance: [], keyEventPerformance: [], ...options.metrics };
   const stored = { id: 'saved-report', client_id: client.id, month: '2026-09-19 to 2026-10-19', traffic: 458, conversions: 39, page_views: 648, active_users: 377, bounce_rate: 0.598, engagement_rate: 0.402, notes: 'Saved context', ...options.stored };
@@ -40,6 +40,7 @@ function fixture(options = {}) {
       insert(value) { operation = 'insert'; payload = value; return query; },
       update(value) { operation = 'update'; payload = value; return query; },
       single: async () => {
+        if (operation === 'insert' && options.insertError) return { data: null, error: options.insertError };
         if (operation === 'insert') { state.writes++; const row = { id: 'new-report', ...payload[0] }; state.rows.push(row); return { data: row, error: null }; }
         if (options.missingReport) return { data: null, error: null };
         return { data: fields === '*' ? stored : Object.fromEntries(fields.split(',').map(k => [k.trim(), stored[k.trim()]])), error: null };
@@ -60,18 +61,76 @@ function fixture(options = {}) {
   } };
   class ConfigError extends Error {}
   class OpenAI {
-    constructor() { this.chat = { completions: { create: async value => { state.aiCalls.push(value); return { choices: [{ message: { content: 'Fixture summary' } }] }; } } }; }
+    constructor(configuration) { state.aiInitializations++; state.aiConfigurations.push(configuration); this.chat = { completions: { create: async value => { state.aiCalls.push(value); return { choices: [{ message: { content: 'Fixture summary' } }] }; } } }; }
   }
   const deps = {
     '@/lib/data-store': { appData: data },
     '@/lib/supabase-server': { getRequestUser: async () => ({ user: options.signedOut ? null : { id: options.userId ?? 'owner' }, error: null }), isAdminUser: () => options.admin ?? false },
     '@/lib/analytics/ga4': { GoogleAnalyticsConfigError: ConfigError, getGA4Report: async (...args) => { state.gaCalls.push(args); if (options.gaFailure) throw new Error('private provider diagnostic'); return metrics; } },
     '@/lib/report-summary': { buildSummaryPrompt: ({ report }) => { state.promptReports.push(report); return JSON.stringify(report); } },
+    '@/lib/usage': {
+      withUsage: async (actorId, operation, work) => {
+        state.usageCalls.push({ actorId, operation });
+        if (options.usageUnavailable) return Response.json({ error: 'Usage tracking is unavailable.' }, { status: 503 });
+        if (options.usageDenied) return Response.json({ error: 'Too many requests.' }, { status: 429, headers: { 'Retry-After': '60' } });
+        return work();
+      },
+      getReportAllowance: async clientId => {
+        state.allowanceCalls.push(clientId);
+        if (options.allowanceFailsAfterInsert && state.rows.length) throw new Error("private DB diagnostic");
+        const unlimited = ['pro', 'agency'].includes(options.billing?.plan) && ['active', 'trialing', 'past_due'].includes(options.billing?.status);
+        const used = options.count ?? state.rows.length;
+        return { used, limit: unlimited ? null : 3, remaining: unlimited ? null : Math.max(0, 3 - used) };
+      },
+    },
     openai: OpenAI,
   };
   return { state, metrics, stored, deps, create: load('app/api/reports/route.ts', deps), ai: () => load('app/api/ai-summary/route.ts', deps) };
 }
 function request(body) { return new Request('https://convert.example/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+
+test('every upstream route checks durable usage before provider work', async t => {
+  for (const operation of ['report','ai','sync']) {
+    await t.test(operation, async () => {
+      const f = fixture({ usageDenied: true });
+      const response = operation === 'report'
+        ? await f.create.POST(request({client_id:'client-fixture',analytics_source:'ga4'}))
+        : operation === 'ai'
+          ? await f.ai().POST(request({reportId:'saved-report'}))
+          : await load('app/api/reports/[id]/sync-analytics/route.ts', f.deps).POST(request({}), {params:Promise.resolve({id:'saved-report'})});
+      assert.equal(response.status,429);
+      assert.equal(response.headers.get('Retry-After'),'60');
+      assert.equal(f.state.gaCalls.length,0);assert.equal(f.state.aiCalls.length,0);assert.equal(f.state.writes,0);
+      assert.equal(f.state.aiInitializations,0);
+      assert.equal(f.state.usageCalls[0].operation,operation);
+    });
+  }
+});
+
+test('usage outage fails closed before expensive report or AI work',async()=>{
+  const f=fixture({usageUnavailable:true});
+  assert.equal((await f.create.POST(request({client_id:'client-fixture'}))).status,503);
+  assert.equal((await f.ai().POST(request({reportId:'saved-report'}))).status,503);
+  assert.equal(f.state.gaCalls.length,0);assert.equal(f.state.aiCalls.length,0);
+});
+
+test('atomic quota denial is a safe403 without persisting a report',async()=>{
+ for(const error of [{code:'REPORT_LIMIT',message:'Report limit reached.'},{code:'P0001',message:'REPORT_QUOTA_EXCEEDED'}]) {
+  const f=fixture({insertError:error});const response=await f.create.POST(request({client_id:'client-fixture'}));
+  assert.equal(response.status,403);assert.equal(f.state.rows.length,0);
+ }
+});
+test('post-commit allowance read failure does not advertise a failed creation or unlimited use',async()=>{
+ const f=fixture({allowanceFailsAfterInsert:true});const response=await f.create.POST(request({client_id:'client-fixture'}));const body=await response.json();
+ assert.equal(response.status,201);assert.equal(f.state.rows.length,1);assert.equal(body.usage_remaining_known,false);assert.equal(body.reports_remaining,null);assert.equal(body.report.id,'new-report');
+});
+
+test('report quota precheck reads durable allowance rather than surviving report rows',async()=>{
+  const f=fixture({count:3});
+  const response=await f.create.POST(request({client_id:'client-fixture',analytics_source:'ga4'}));
+  assert.equal(response.status,403);assert.equal(f.state.gaCalls.length,0);
+  assert.deepEqual(f.state.allowanceCalls,['client-fixture']);
+});
 
 test('malformed uploads are rejected instead of converted into missing or invented metrics', async (t) => {
   for (const [name, uploaded] of [
@@ -100,7 +159,9 @@ test('AI uses saved authorized measurements and notes instead of browser overrid
   const f = fixture();
   const response = await f.ai().POST(request({ reportId: 'saved-report', traffic: 999999, conversions: 999999, month: 'forged', notes: 'forged context' }));
   assert.equal(response.status, 200);
-  assert.equal(f.state.promptReports[0].traffic, f.stored.traffic);
+  assert.equal(f.state.aiConfigurations[0].timeout,60000);
+  assert.equal(f.state.aiConfigurations[0].maxRetries,0);
+  assert.equal(f.state.promptReports[0].traffic, 458);
   assert.equal(f.state.promptReports[0].conversions, f.stored.conversions);
   assert.equal(f.state.promptReports[0].month, f.stored.month);
   assert.equal(f.state.promptReports[0].notes, f.stored.notes);

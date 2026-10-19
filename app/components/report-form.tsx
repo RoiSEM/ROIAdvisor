@@ -206,6 +206,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
     setErrorMessage("");
     setSuccessMessage("");
     setStatus("Creating report...");
+    let reportWasSaved = false;
 
     try {
       if (useUploadedAnalytics && !hasValidReportMetrics(uploadedAnalytics)) {
@@ -237,6 +238,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
         return;
       }
 
+      reportWasSaved = true;
       const reportId = reportData?.report?.id;
 
       if (!reportId) {
@@ -257,21 +259,23 @@ export default function ReportForm({ clientId }: { clientId: string }) {
       const aiData = await aiRes.json();
 
       if (!aiRes.ok) {
-        setErrorMessage(aiData.error || "Failed to generate AI summary");
+        setErrorMessage(`Report saved. ${aiData.error || "The AI summary could not be generated."} Retry the AI summary on the saved report instead of generating another report.`);
         return;
       }
 
-      setNotes("");
-      setUseUploadedAnalytics(false);
-      setUploadedAnalytics(emptyUploadedAnalytics);
-      setUploadedFileName("");
-      setStatus("");
       setSuccessMessage(reportData.message || "Report generated successfully.");
-      router.refresh();
-    } catch (error) {
-      console.error(error);
-      setErrorMessage("Something went wrong");
+    } catch {
+      setErrorMessage(reportWasSaved
+        ? "Report saved. Retry the AI summary on the saved report instead of generating another report."
+        : "Something went wrong. Check your reports before trying again.");
     } finally {
+      if (reportWasSaved) {
+        setNotes("");
+        setUseUploadedAnalytics(false);
+        setUploadedAnalytics(emptyUploadedAnalytics);
+        setUploadedFileName("");
+        router.refresh();
+      }
       setLoading(false);
       setStatus("");
     }

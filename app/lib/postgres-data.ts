@@ -78,6 +78,10 @@ export async function ensurePostgresUser(user: { id: string; email?: string; cre
 }
 
 function safeError(error: unknown): Failure {
+  const quotaFailure = error as { code?: string; message?: string };
+  if (quotaFailure?.code === "P0001" && quotaFailure.message === "REPORT_QUOTA_EXCEEDED") {
+    return { code: "REPORT_LIMIT", message: "Report limit reached for this calendar month." };
+  }
   const failure = error as { code?: string; message?: string };
   const column = failure.code === "42703" ? failure.message?.match(/column (?:\w+\.)?"?(\w+)"?(?: of relation "\w+")? does not exist/)?.[1] : null;
   if (column && Object.values(COLUMNS).some((columns) => columns.includes(column))) {
