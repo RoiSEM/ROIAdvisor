@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ManageBillingButton from "@/components/manage-billing-button";
 import ThemeSwitch from "@/components/theme-switch";
+import HomeScrollMotion from "./home-scroll-motion";
 import { milestoneHelpHref } from "@/lib/milestone-guides";
 import styles from "./home-landing.module.css";
 
@@ -77,6 +78,7 @@ export default function HomeLanding({
 
   return (
     <div className={styles.home}>
+      <HomeScrollMotion />
       <a className={styles.skip} href="#main">
         Skip to content
       </a>
@@ -266,7 +268,7 @@ export default function HomeLanding({
               </p>
             </div>
             <div className={styles.valueGrid}>
-              <article className={styles.valueMain}>
+              <article className={styles.valueMain} data-motion-card="">
                 <h3>Three questions every report tries to answer</h3>
                 <p>
                   Written for owners, not analysts. Where the data is thin, the
@@ -298,7 +300,7 @@ export default function HomeLanding({
                 </ul>
               </article>
               <div className={styles.valueSide}>
-                <div className={styles.sideCard}>
+                <div className={styles.sideCard} data-motion-card="">
                   <h3>Your choice of route</h3>
                   <p>
                     Every suggested step comes with a short written walkthrough.
@@ -306,7 +308,7 @@ export default function HomeLanding({
                     George about that specific task.
                   </p>
                 </div>
-                <div className={styles.sideCard}>
+                <div className={styles.sideCard} data-motion-card="">
                   <h3>Progress you can see</h3>
                   <p>
                     A grade tracks how ready your site is to measure real
@@ -332,7 +334,7 @@ export default function HomeLanding({
               </p>
             </div>
             <ol className={styles.path}>
-              <li>
+              <li data-motion-card="">
                 <h3>Start</h3>
                 <p>
                   Before Convert can read verified data, your site is shown as
@@ -342,7 +344,7 @@ export default function HomeLanding({
                   Not started
                 </span>
               </li>
-              <li className={styles.pathBig}>
+              <li className={styles.pathBig} data-motion-card="">
                 <h3>Connect your data</h3>
                 <p>
                   Grant Convert read access to your Google Analytics property,
@@ -352,7 +354,7 @@ export default function HomeLanding({
                   Biggest step
                 </span>
               </li>
-              <li>
+              <li data-motion-card="">
                 <h3>Get ready to measure</h3>
                 <p>
                   Name the action you want, set a monthly goal, label your
@@ -363,7 +365,7 @@ export default function HomeLanding({
                   Up to 70
                 </span>
               </li>
-              <li>
+              <li data-motion-card="">
                 <h3>Learn from results</h3>
                 <p>
                   Once real activity is recorded, smaller gains come from
@@ -402,6 +404,7 @@ export default function HomeLanding({
                   key={step.id}
                   className={cx(styles.step, step.priority && styles.stepPriority)}
                   aria-labelledby={step.id}
+                  data-motion-card=""
                 >
                   <div className={styles.stepTop}>
                     {step.priority ? (
@@ -453,27 +456,27 @@ export default function HomeLanding({
               <p>Setting expectations clearly is part of the advice.</p>
             </div>
             <ul className={styles.notList}>
-              <li>
+              <li data-motion-card="">
                 <b>It doesn&rsquo;t edit your site</b>
                 <span>
                   Convert reads data. It doesn&rsquo;t install scripts or change
                   pages for you.
                 </span>
               </li>
-              <li>
+              <li data-motion-card="">
                 <b>It doesn&rsquo;t promise results</b>
                 <span>
                   It explains what your own data shows. Outcomes depend on what
                   you change.
                 </span>
               </li>
-              <li>
+              <li data-motion-card="">
                 <b>It doesn&rsquo;t watch your site live</b>
                 <span>
                   Reports cover the period you choose, from the data available.
                 </span>
               </li>
-              <li>
+              <li data-motion-card="">
                 <b>Help is never assumed</b>
                 <span>
                   Emailing George is optional and about one task at a time. No
@@ -487,7 +490,7 @@ export default function HomeLanding({
         {/* PRICING (link out; no prices on the homepage) */}
         <section className={styles.band} id="pricing" aria-labelledby="pricing-title">
           <div className={styles.wrap}>
-            <div className={styles.pricing}>
+            <div className={styles.pricing} data-motion-card="">
               <div>
                 <span className={styles.eyebrow}>Pricing</span>
                 <h2 id="pricing-title">Plans and current prices</h2>
@@ -510,7 +513,7 @@ export default function HomeLanding({
           aria-labelledby="start-title"
         >
           <div className={styles.wrap}>
-            <div className={styles.closing}>
+            <div className={styles.closing} data-motion-card="">
               <div>
                 <span className={styles.eyebrow}>Start here</span>
                 <h2 id="start-title">Start with the connection.</h2>
