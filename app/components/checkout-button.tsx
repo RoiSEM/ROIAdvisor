@@ -73,8 +73,8 @@ export default function CheckoutButton({
         className ||
         `inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
           featured
-            ? "bg-white text-slate-950 hover:bg-slate-100"
-            : "bg-black text-white hover:opacity-90"
+            ? "bg-white text-slate-950 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
+            : "bg-black text-white hover:opacity-90 dark:bg-emerald-500 dark:text-emerald-950"
         }`
       }
     >

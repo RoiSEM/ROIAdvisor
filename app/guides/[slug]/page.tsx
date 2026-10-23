@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ThemeSwitch from "@/components/theme-switch";
 import {
   getMilestoneGuide,
   MILESTONE_GUIDES,
@@ -20,12 +21,18 @@ export default async function MilestoneGuidePage({ params }: Props) {
   const guide = getMilestoneGuide(slug);
   if (!guide) notFound();
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-6 p-6 sm:p-10">
-      <Link href="/dashboard" className="text-sm underline">
-        Back to dashboard
-      </Link>
+    <main className="mx-auto w-full max-w-3xl space-y-6 p-4 text-slate-900 sm:p-10 dark:text-slate-100">
+      <div className="no-print flex items-center justify-between gap-3">
+        <Link
+          href="/dashboard"
+          className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+        >
+          Back to dashboard
+        </Link>
+        <ThemeSwitch showLabels={false} />
+      </div>
       <header>
-        <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">
+        <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
           Convert · Do it yourself
         </p>
         <h1 className="mt-2 text-3xl font-bold">{guide.title}</h1>
@@ -34,7 +41,7 @@ export default async function MilestoneGuidePage({ params }: Props) {
           task. Reading the guide does not itself earn milestone points.
         </p>
       </header>
-      <section className="rounded-xl border p-5">
+      <section className="rounded-xl border border-slate-200 p-5 dark:border-slate-700">
         <h2 className="text-lg font-semibold">Before you start</h2>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm">
           {guide.prerequisites.map((item) => (
@@ -50,7 +57,7 @@ export default async function MilestoneGuidePage({ params }: Props) {
           ))}
         </ol>
       </section>
-      <section className="rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950">
+      <section className="rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-50">
         <h2 className="font-semibold">Check the outcome</h2>
         <p className="mt-2 text-sm leading-7">{guide.successCheck}</p>
       </section>
@@ -69,7 +76,7 @@ export default async function MilestoneGuidePage({ params }: Props) {
           agreed separately; help is optional.
         </p>
         <a
-          className="mt-3 inline-block rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
+          className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
           href={milestoneHelpHref(guide.title)}
         >
           Get help from George

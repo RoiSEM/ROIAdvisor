@@ -1,8 +1,32 @@
 @import "tailwindcss";
 
+/*
+ * Theme wiring. The selected theme lives on <html data-theme="light|dark">
+ * (set before paint by THEME_INIT_SCRIPT, kept current by ThemeSync).
+ * Tailwind's `dark:` variant follows that attribute instead of the OS media
+ * query, and only on screen: printed pages always use the light styles,
+ * even when the screen is dark.
+ */
+@custom-variant dark {
+  @media screen {
+    &:where([data-theme="dark"], [data-theme="dark"] *) {
+      @slot;
+    }
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light;
+}
+
+@media screen {
+  :root[data-theme="dark"] {
+    --background: #0b0f19;
+    --foreground: #eef1f8;
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
@@ -10,13 +34,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
@@ -49,42 +66,51 @@ a[href^="mailto:george@roisem.com?subject="].rounded-full svg {
   color: #334155;
 }
 
-@media (prefers-color-scheme: dark) {
-  aside:has(a[href^="mailto:george@roisem.com?subject="]) {
+@media screen {
+  [data-theme="dark"] aside:has(a[href^="mailto:george@roisem.com?subject="]) {
     border-color: #1e293b;
     background: #020617;
     color: #f1f5f9;
   }
 
-  aside:has(a[href^="mailto:george@roisem.com?subject="]) h3 {
+  [data-theme="dark"] aside:has(a[href^="mailto:george@roisem.com?subject="]) h3 {
     color: #f8fafc;
   }
 
-  aside:has(a[href^="mailto:george@roisem.com?subject="]) p {
+  [data-theme="dark"] aside:has(a[href^="mailto:george@roisem.com?subject="]) p {
     color: #cbd5e1;
   }
 
-  aside:has(a[href^="mailto:george@roisem.com?subject="]) > p:first-child {
+  [data-theme="dark"]
+    aside:has(a[href^="mailto:george@roisem.com?subject="])
+    > p:first-child {
     color: #94a3b8;
   }
 
-  aside:has(a[href^="mailto:george@roisem.com?subject="]) a {
+  [data-theme="dark"] aside:has(a[href^="mailto:george@roisem.com?subject="]) a {
     background: #f8fafc;
     color: #020617;
   }
 
-  a[href^="mailto:george@roisem.com?subject="].rounded-full {
+  [data-theme="dark"] a[href^="mailto:george@roisem.com?subject="].rounded-full {
     border-color: #334155;
     background: #020617;
     color: #f8fafc;
   }
 
-  a[href^="mailto:george@roisem.com?subject="].rounded-full:hover {
+  [data-theme="dark"]
+    a[href^="mailto:george@roisem.com?subject="].rounded-full:hover {
     background: #0f172a;
   }
 
-  a[href^="mailto:george@roisem.com?subject="].rounded-full svg {
+  [data-theme="dark"]
+    a[href^="mailto:george@roisem.com?subject="].rounded-full
+    svg {
     color: #e2e8f0;
+  }
+
+  [data-theme="dark"] .details {
+    border-bottom-color: #1e293b;
   }
 }
 
@@ -100,6 +126,22 @@ a[href^="mailto:george@roisem.com?subject="].rounded-full svg {
   @page {
     size: auto;
     margin: 0.5in;
+  }
+
+  /* Print must resolve to the final light styles immediately, never mid
+     colour-transition from the dark screen theme. */
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  :root,
+  :root[data-theme="dark"] {
+    color-scheme: light;
+    --background: #fff;
+    --foreground: #111827;
   }
 
   html,
@@ -141,7 +183,8 @@ a[href^="mailto:george@roisem.com?subject="].rounded-full svg {
     color: #334155 !important;
   }
 
-  .no-print {
+  .no-print,
+  [role="group"][aria-label="Color theme"] {
     display: none !important;
   }
 
@@ -160,6 +203,11 @@ a[href^="mailto:george@roisem.com?subject="].rounded-full svg {
   a {
     color: inherit !important;
     text-decoration: none !important;
+  }
+
+  /* Link text inherits ink above, so drop button-style fills on paper. */
+  a[class*="bg-"] {
+    background: transparent !important;
   }
 
   button {

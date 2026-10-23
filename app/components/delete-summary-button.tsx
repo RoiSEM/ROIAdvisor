@@ -50,7 +50,7 @@ export default function DeleteReportButton({
       type="button"
       onClick={handleDelete}
       disabled={loading}
-      className="mt-3 ml-1 rounded px-4 py-0 mt-0 text-gray-400 hover:text-red-700 disabled:opacity-50"
+      className="mt-3 ml-1 rounded px-4 py-0 mt-0 text-gray-400 hover:text-red-700 disabled:opacity-50 dark:text-slate-400"
       title="Delete report"
     >
       <Trash2 size={12} />

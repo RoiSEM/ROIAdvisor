@@ -56,7 +56,7 @@ export default function ReportHeaderActions({
           landingPagePerformance={landingPagePerformance}
           devicePerformance={devicePerformance}
           keyEventPerformance={keyEventPerformance}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10 dark:border-slate-700 dark:hover:bg-slate-800"
           iconOnly
         />
       )}
@@ -64,7 +64,7 @@ export default function ReportHeaderActions({
         reportId={reportId}
         month={month}
         clientName={clientName}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10 dark:border-slate-700 dark:hover:bg-slate-800"
         iconOnly
       />
       <a
@@ -74,7 +74,7 @@ export default function ReportHeaderActions({
         }}
         aria-label="Print view"
         title="Print view"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 transition hover:bg-slate-50 md:h-10 md:w-10 dark:border-slate-700 dark:hover:bg-slate-800"
       >
         <Printer size={18} aria-hidden="true" />
       </a>

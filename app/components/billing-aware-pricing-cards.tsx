@@ -78,11 +78,11 @@ export default function BillingAwarePricingCards({
         const baseCardClass =
           variant === "home"
             ? plan.featured
-              ? "border-slate-950 bg-slate-950 text-white"
-              : "border-slate-200 bg-slate-50 text-slate-950"
+              ? "border-slate-950 bg-slate-950 text-white dark:border-emerald-400 dark:bg-slate-800"
+              : "border-slate-200 bg-slate-50 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
             : plan.featured
-              ? "border-slate-950 bg-slate-950 text-white"
-              : "border-slate-200 bg-white text-slate-950";
+              ? "border-slate-950 bg-slate-950 text-white dark:border-emerald-400 dark:bg-slate-800"
+              : "border-slate-200 bg-white text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50";
 
         return (
           <div
@@ -93,7 +93,7 @@ export default function BillingAwarePricingCards({
               <div>
                 <p
                   className={`text-sm font-semibold uppercase tracking-[0.2em] ${
-                    plan.featured ? "text-slate-300" : "text-slate-500"
+                    plan.featured ? "text-slate-300" : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   {plan.name}
@@ -104,7 +104,7 @@ export default function BillingAwarePricingCards({
               </div>
 
               {isCurrentPlan ? (
-                <span className="whitespace-nowrap rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-950 ring-1 ring-inset ring-emerald-200 sm:text-[11px]">
+                <span className="whitespace-nowrap rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-950 ring-1 ring-inset ring-emerald-200 sm:text-[11px] dark:bg-emerald-900/50 dark:text-emerald-100 dark:ring-emerald-800">
                   Current plan
                 </span>
               ) : plan.featured ? (
@@ -116,7 +116,7 @@ export default function BillingAwarePricingCards({
 
             <p
               className={`mt-5 text-sm leading-7 ${
-                plan.featured ? "text-slate-200" : "text-slate-600"
+                plan.featured ? "text-slate-200" : "text-slate-600 dark:text-slate-300"
               }`}
             >
               {plan.description}
@@ -137,8 +137,8 @@ export default function BillingAwarePricingCards({
                   href="mailto:george@roisem.com?subject=Agency%20Plan%20Inquiry"
                   className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition ${
                     plan.featured
-                      ? "bg-white text-slate-950 hover:bg-slate-100"
-                      : "bg-black text-white hover:opacity-90"
+                      ? "bg-white text-slate-950 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
+                      : "bg-black text-white hover:opacity-90 dark:bg-emerald-500 dark:text-emerald-950"
                   }`}
                 >
                   {plan.cta}
@@ -154,8 +154,8 @@ export default function BillingAwarePricingCards({
                   }
                   className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition ${
                     plan.featured
-                      ? "bg-white text-slate-950 hover:bg-slate-100"
-                      : "border border-slate-300 bg-white text-slate-950 hover:bg-slate-100"
+                      ? "bg-white text-slate-950 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
+                      : "border border-slate-300 bg-white text-slate-950 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
                   }`}
                 />
               ) : (
@@ -166,8 +166,8 @@ export default function BillingAwarePricingCards({
                   disabled={isCurrentPlan}
                   className={`inline-flex w-full items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                     plan.featured
-                      ? "bg-white text-slate-950 hover:bg-slate-100"
-                      : "bg-black text-white hover:opacity-90"
+                      ? "bg-white text-slate-950 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
+                      : "bg-black text-white hover:opacity-90 dark:bg-emerald-500 dark:text-emerald-950"
                   }`}
                 />
               )}

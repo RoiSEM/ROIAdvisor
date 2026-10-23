@@ -141,7 +141,7 @@ export default function PricingPageClient() {
   const statusBanner = useMemo(() => {
     if (checkoutState === "cancelled") {
       return {
-        tone: "border-slate-200 bg-slate-50 text-slate-700",
+        tone: "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300",
         body: "Checkout was cancelled. Your current plan is unchanged.",
         title: "No changes made",
       };
@@ -149,7 +149,7 @@ export default function PricingPageClient() {
 
     if (checkoutState === "success" && unlocking) {
       return {
-        tone: "border-blue-200 bg-blue-50 text-blue-900",
+        tone: "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100",
         body: "Payment completed. We’re syncing your plan and unlocking paid features now.",
         title: "Unlocking your account",
       };
@@ -157,7 +157,7 @@ export default function PricingPageClient() {
 
     if (checkoutState === "success" && billing.can_use_custom_date_range) {
       return {
-        tone: "border-green-200 bg-green-50 text-green-900",
+        tone: "border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950/40 dark:text-green-100",
         body: "Your plan is active and paid features are ready to use immediately.",
         title: "Upgrade complete",
       };
@@ -165,7 +165,7 @@ export default function PricingPageClient() {
 
     if (checkoutState === "success") {
       return {
-        tone: "border-amber-200 bg-amber-50 text-amber-900",
+        tone: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100",
         body: "Payment succeeded, but the webhook has not updated your account yet. This usually clears in a few seconds.",
         title: "Still syncing",
       };
@@ -175,17 +175,17 @@ export default function PricingPageClient() {
   }, [billing.can_use_custom_date_range, checkoutState, unlocking]);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_45%,_#ffffff_78%)] text-slate-950">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_45%,_#ffffff_78%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,_#111827,_#0b0f19_55%,_#0b0f19_78%)] dark:text-slate-50">
       <SiteHeaderNav current="pricing">
         <Link
           href="/"
-          className="hidden rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 sm:inline-flex"
+          className="hidden min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 lg:inline-flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
         >
           Home
         </Link>
         <Link
           href="/dashboard"
-          className="inline-flex rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:px-4 dark:bg-emerald-500 dark:text-emerald-950"
         >
           Open dashboard
         </Link>
@@ -193,40 +193,40 @@ export default function PricingPageClient() {
 
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-14 sm:px-8 sm:py-20">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
             Pricing
           </p>
           <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
             Upgrade when you need deeper reporting, not before.
           </h1>
-          <p className="mt-5 text-lg leading-8 text-slate-600">
+          <p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">
             Start lean, unlock custom date ranges and unlimited reporting when
             you are ready, and manage billing without emailing support.
           </p>
         </div>
 
-        <div className="grid gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur md:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur md:grid-cols-[1.2fr_0.8fr] dark:border-slate-800 dark:bg-slate-900/80">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
               Current access
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
                   billing.plan === "free"
-                    ? "bg-slate-200 text-slate-900"
+                    ? "bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100"
                     : billing.plan === "starter"
-                      ? "bg-amber-100 text-amber-900"
-                      : "bg-emerald-100 text-emerald-900"
+                      ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
+                      : "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
                 }`}
               >
                 {loadingBilling ? "Loading" : formatPlanLabel(billing.plan)}
               </span>
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-slate-500 dark:text-slate-400">
                 Status: {loadingBilling ? "loading" : formatStatus(billing.status)}
               </span>
             </div>
-            <p className="mt-4 text-sm leading-7 text-slate-600">
+            <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
               {billing.can_use_custom_date_range
                 ? "Paid features are unlocked, including custom date ranges and unlimited report generation."
                 : billing.plan === "starter"
@@ -235,11 +235,11 @@ export default function PricingPageClient() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-sm font-semibold text-slate-900">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               What happens after checkout
             </p>
-            <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+            <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
               <li>Stripe completes the payment securely.</li>
               <li>The webhook updates `billing_accounts` in your database.</li>
               <li>Your paid features unlock as soon as the billing record syncs.</li>
@@ -247,7 +247,7 @@ export default function PricingPageClient() {
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 dark:bg-emerald-500 dark:text-emerald-950"
               >
                 Open dashboard
               </Link>

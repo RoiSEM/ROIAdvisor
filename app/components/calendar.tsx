@@ -77,10 +77,10 @@ export function ReportDatePicker({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+    <div className="space-y-4 rounded-lg border border-gray-200 p-4 dark:border-slate-700">
       <div>
-        <p className="text-sm font-medium text-gray-900">Report date range</p>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm font-medium text-gray-900 dark:text-slate-100">Report date range</p>
+        <p className="text-sm text-gray-600 dark:text-slate-300">
           {isPro
             ? "Choose any custom date range for your report."
             : "Trial accounts are limited to the last 30 days."}
@@ -91,7 +91,7 @@ export function ReportDatePicker({
         <div>
           <label
             htmlFor="startDate"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300"
           >
             Start date
           </label>
@@ -102,14 +102,14 @@ export function ReportDatePicker({
             max={endDate}
             onChange={(e) => handleStartDateChange(e.target.value)}
             disabled={!isPro}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-slate-700"
           />
         </div>
 
         <div>
           <label
             htmlFor="endDate"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300"
           >
             End date
           </label>
@@ -120,13 +120,13 @@ export function ReportDatePicker({
             min={startDate}
             onChange={(e) => handleEndDateChange(e.target.value)}
             disabled={!isPro}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-slate-700"
           />
         </div>
       </div>
 
       {!isPro && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
           <p>
             Upgrade to Pro to unlock custom date ranges, historical reporting,
             and advanced filtering.
@@ -135,7 +135,7 @@ export function ReportDatePicker({
             <button
               type="button"
               onClick={onUpgradeClick}
-              className="mt-3 inline-flex items-center rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+              className="mt-3 inline-flex items-center rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100"
             >
               Upgrade to Pro
             </button>

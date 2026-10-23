@@ -334,8 +334,8 @@ export default async function ClientDetailPage({
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
               isApproved
-                ? "bg-emerald-100 text-emerald-900"
-                : "bg-amber-100 text-amber-900"
+                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
+                : "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
             }`}
           >
             {isApproved ? "Approved" : "Pending approval"}
@@ -343,14 +343,14 @@ export default async function ClientDetailPage({
         </div>
         <p className="mt-2">{client.website || "No website"}</p>
         {!isApproved && (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
             <p className="font-semibold">Reports are locked until approval.</p>
             <p className="mt-2 leading-7">
               This website is still pending approval. Reports unlock after
               analytics access is confirmed and an admin approves the site.
             </p>
             {client.approval_notes && (
-              <p className="mt-2 leading-7 text-amber-900">
+              <p className="mt-2 leading-7 text-amber-900 dark:text-amber-100">
                 Admin notes: {client.approval_notes}
               </p>
             )}
@@ -377,9 +377,9 @@ export default async function ClientDetailPage({
       {isApproved ? (
         <ReportForm clientId={id} />
       ) : (
-        <div className="mt-8 rounded border border-slate-200 bg-slate-50 p-6">
+        <div className="mt-8 rounded border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950">
           <h2 className="text-2xl font-semibold">Generate report</h2>
-          <p className="mt-2 text-sm leading-7 text-slate-600">
+          <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
             Report generation becomes available once this website has been
             approved.
           </p>
@@ -397,7 +397,7 @@ export default async function ClientDetailPage({
         <div className="mt-4 space-y-4">
           {reports.length === 0 ? (
             <div className="space-y-4">
-              <p className="text-gray-500">No reports yet.</p>
+              <p className="text-gray-500 dark:text-slate-400">No reports yet.</p>
               <ServiceCta variant="analyticsSetup" clientName={client.name} />
             </div>
           ) : (
@@ -420,7 +420,7 @@ export default async function ClientDetailPage({
               }) => (
                 <details
                   key={report.id}
-                  className="group relative rounded-xl border border-slate-200 shadow-sm open:shadow-md"
+                  className="group relative rounded-xl border border-slate-200 shadow-sm open:shadow-md dark:border-slate-800"
                 >
                   {(() => {
                     const summaryMarkdown =
@@ -466,7 +466,7 @@ export default async function ClientDetailPage({
                             keyEventPerformance={report.key_event_performance}
                             clientName={client.name}
                           />
-                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 transition group-open:rotate-180 md:h-10 md:w-10">
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 transition group-open:rotate-180 md:h-10 md:w-10 dark:border-slate-800">
                             <ChevronDown
                               size={20}
                               strokeWidth={2.25}
@@ -475,7 +475,7 @@ export default async function ClientDetailPage({
                           </span>
                         </div>
 
-                        <div className="border-t border-slate-100 px-5 py-5">
+                        <div className="border-t border-slate-100 px-5 py-5 dark:border-slate-800">
                           <div className="mb-4 flex justify-end">
                             <DeleteReportButton
                               reportId={report.id}
@@ -621,7 +621,7 @@ export default async function ClientDetailPage({
                                 </>
                               )}
                             </div>
-                            <p className="mt-5 text-xs text-slate-500">
+                            <p className="mt-5 text-xs text-slate-500 dark:text-slate-400">
                               Use the milestone next steps above for DIY
                               guidance or help from George. Saved AI commentary
                               may reflect earlier grading rules; it is not

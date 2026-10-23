@@ -109,7 +109,7 @@ export default function MilestoneProgress({
             aria-label={`Progress score ${assessment.score} out of 100`}
           >
             {assessment.score}
-            <span className="text-base font-normal text-slate-500">/100</span>
+            <span className="text-base font-normal text-slate-500 dark:text-slate-400">/100</span>
           </p>
           <p className="mt-1 text-xs">
             Readiness {assessment.readinessScore}/70 · Results{" "}
@@ -138,7 +138,7 @@ export default function MilestoneProgress({
         aria-live="polite"
         className={
           celebration
-            ? "rounded-lg bg-emerald-50 p-3 font-semibold text-emerald-900"
+            ? "rounded-lg bg-emerald-50 p-3 font-semibold text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
             : "sr-only"
         }
       >

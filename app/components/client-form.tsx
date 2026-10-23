@@ -681,18 +681,18 @@ export default function ClientForm({
                 <button
                   type="button"
                   onClick={() => setLogoUrl("")}
-                  className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium transition hover:bg-slate-50"
+                  className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
                 >
                   Remove logo
                 </button>
               )}
             </div>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
               Optional. Upload a PNG/JPG or paste a public image URL.
             </p>
           </div>
 
-          <div className="flex min-h-24 items-center justify-center rounded border border-slate-200 bg-slate-50 p-3">
+          <div className="flex min-h-24 items-center justify-center rounded border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -701,7 +701,7 @@ export default function ClientForm({
                 className="max-h-20 max-w-full object-contain"
               />
             ) : (
-              <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+              <span className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Logo Preview
               </span>
             )}
@@ -726,7 +726,7 @@ export default function ClientForm({
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                 Optional. Assign this website to an existing user account.
               </p>
             </div>
@@ -742,7 +742,7 @@ export default function ClientForm({
               className="w-full rounded border px-3 py-2"
               placeholder="123456789"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
               Use the numeric GA4 Property ID, not the Measurement ID.
             </p>
             <p className="mt-2 text-xs">
@@ -766,7 +766,7 @@ export default function ClientForm({
         />
       </section>
 
-      <details className="rounded-xl border border-slate-300 p-4">
+      <details className="rounded-xl border border-slate-300 p-4 dark:border-slate-700">
         <summary className="cursor-pointer font-semibold">
           Readiness checks and optional results context
         </summary>
@@ -1035,7 +1035,7 @@ export default function ClientForm({
             />
           </div>
         </div>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
           Comparisons need earlier, nonoverlapping periods of equal length.
           Documenting a change does not prove causation or a statistically
           significant A/B test. Points depend on the scoring checks, not simply
@@ -1049,7 +1049,7 @@ export default function ClientForm({
             <h2 className="text-lg font-semibold">
               Analytics Access & Approval
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Reports unlock after the client adds the service account to GA4
               and an admin confirms access.
             </p>
@@ -1073,7 +1073,7 @@ export default function ClientForm({
           <ServiceCta
             variant="trackingConfidence"
             clientName={name}
-            className="border-amber-200 bg-amber-50"
+            className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40"
           />
 
           <div>
@@ -1199,7 +1199,7 @@ export default function ClientForm({
             rows={3}
             placeholder="generate_lead, purchase, phone_call"
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Add the key events that should act as purchase or lead indicators.
             Use one per line or separate them with commas.
           </p>
@@ -1519,7 +1519,7 @@ export default function ClientForm({
 
       <button
         disabled={loading}
-        className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+        className="rounded bg-black px-4 py-2 text-white disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950"
       >
         {loading ? "Saving..." : isEditMode ? "Save Changes" : "Add Project"}
       </button>

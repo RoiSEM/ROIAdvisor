@@ -24,14 +24,14 @@ const emptyUploadedAnalytics: UploadedAnalytics = {
 
 function planTone(plan: AccountPlan) {
   if (plan === "free") {
-    return "text-slate-700";
+    return "text-slate-700 dark:text-slate-300";
   }
 
   if (plan === "starter") {
-    return "text-amber-600";
+    return "text-amber-600 dark:text-amber-300";
   }
 
-  return "text-green-600";
+  return "text-green-600 dark:text-green-300";
 }
 
 function metricToInput(value: number | null) {
@@ -286,11 +286,11 @@ export default function ReportForm({ clientId }: { clientId: string }) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold">Generate report</h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             Load analytics or validate your CSV, then generate insights from the saved report.
           </p>
         </div>
-        <div className="text-sm text-slate-600">
+        <div className="text-sm text-slate-600 dark:text-slate-300">
           Current Plan:{" "}
           <span
             className={`font-semibold ${planTone(billingPlan)}`}
@@ -308,23 +308,23 @@ export default function ReportForm({ clientId }: { clientId: string }) {
           onUpgradeClick={() => router.push("/pricing")}
         />
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 className="text-base font-semibold text-slate-950">
+              <h3 className="text-base font-semibold text-slate-950 dark:text-slate-50">
                 Upload analytics CSV
               </h3>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 Upload a comma-separated CSV instead of connecting Analytics. Include <code>Sessions</code> and <code>Conversions</code> (or <code>Key Events</code>). Views, Active Users, Bounce Rate, and Engagement Rate are optional.
               </p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 Use one summary row or a complete table grouped by Channel, Landing Page, or Device—not a mix. Limits: 5 MB and 10,000 rows. Rates must use a percent sign (40%) or a decimal (0.4). Unsupported exports are rejected rather than guessed.
               </p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 Export the same dates selected above; dates are not detected from the CSV. Missing optional values stay blank. Active users are left unknown when they cannot be totaled reliably.
               </p>
             </div>
-            <label className="inline-flex w-fit cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">
+            <label className="inline-flex w-fit cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800">
               Choose CSV
               <input
                 type="file"
@@ -343,20 +343,20 @@ export default function ReportForm({ clientId }: { clientId: string }) {
             </div>
           )}
           {uploadedFileName && (
-            <div className="mt-4 rounded-lg border border-emerald-200 bg-white p-4">
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-white p-4 dark:border-emerald-800 dark:bg-slate-900">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-emerald-900">
+                  <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
                     Using uploaded analytics
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {uploadedFileName}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={chooseAnalyticsSync}
-                  className="w-fit rounded border border-slate-300 px-3 py-1.5 text-xs font-semibold transition hover:bg-slate-50"
+                  className="w-fit rounded border border-slate-300 px-3 py-1.5 text-xs font-semibold transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
                 >
                   Use GA4 sync instead
                 </button>
@@ -364,7 +364,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
 
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                     Traffic (Sessions)
                   </label>
                   <input
@@ -377,7 +377,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                     Page Views
                   </label>
                   <input
@@ -390,7 +390,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                     Active Users
                   </label>
                   <input
@@ -403,7 +403,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                     Bounce Rate %
                   </label>
                   <input
@@ -416,7 +416,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                     Engagement Rate %
                   </label>
                   <input
@@ -433,7 +433,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                     Conversions
                   </label>
                   <input
@@ -447,7 +447,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
                 </div>
               </div>
 
-              <p className="mt-3 text-xs leading-6 text-slate-500">
+              <p className="mt-3 text-xs leading-6 text-slate-500 dark:text-slate-400">
                 Review these detected metrics before generating. Channel,
                 landing page, and device rows are included automatically when
                 the CSV contains matching columns. Blank means unknown.
@@ -465,19 +465,19 @@ export default function ReportForm({ clientId }: { clientId: string }) {
             placeholder="Blog content added, homepage updated, new ads launched..."
             rows={4}
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
             Optional context for this reporting period, such as site changes, campaigns, or offers.
           </p>
         </div>
 
         {errorMessage && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100">
             {errorMessage}
           </div>
         )}
 
         {successMessage && (
-          <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+          <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 dark:border-green-800 dark:bg-green-950/40 dark:text-green-100">
             {successMessage}
           </div>
         )}
@@ -487,7 +487,7 @@ export default function ReportForm({ clientId }: { clientId: string }) {
             type="submit"
             suppressHydrationWarning
             disabled={loading || uploadPending}
-            className="w-fit rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+            className="w-fit rounded bg-black px-4 py-2 text-white disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950"
           >
             {loading ? "Working..." : "Generate Report"}
           </button>

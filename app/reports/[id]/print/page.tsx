@@ -440,7 +440,7 @@ export default async function PrintReportPage({
             )}
           </div>
 
-          <div className="flex h-20 w-44 items-center justify-center border border-slate-300 bg-white p-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 print:border-slate-300 print:bg-white print:text-slate-400">
+          <div className="flex h-20 w-44 items-center justify-center border border-slate-300 bg-white p-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 print:border-slate-300 print:bg-white print:text-slate-500">
             {client?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -478,7 +478,7 @@ export default async function PrintReportPage({
         >
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Report Health
               </p>
               <div className="mt-2 flex items-center gap-3">
@@ -523,14 +523,14 @@ export default async function PrintReportPage({
         <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 print:border-slate-200 print:bg-white">
           <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                 Report Card
               </p>
               <h3 className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-50 print:text-slate-950">
                 Why this grade landed here
               </h3>
             </div>
-            <p className="text-xs leading-5 text-slate-500">
+            <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
               Readiness {healthScore.setupScore}/70 · Results{" "}
               {healthScore.performanceAdjustment >= 0 ? "+" : ""}
               {healthScore.performanceAdjustment}/29
@@ -582,7 +582,7 @@ export default async function PrintReportPage({
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold">Strategic Analysis</h2>
           {!hasAiSummary && (
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
               Preview
             </span>
           )}
@@ -700,7 +700,7 @@ export default async function PrintReportPage({
         </div>
       </section>
 
-      <footer className="print-section mt-12 border-t border-slate-200 pt-4 text-xs">
+      <footer className="print-section mt-12 border-t border-slate-200 pt-4 text-xs dark:border-slate-800">
         <div className="flex items-center justify-between">
           <span>Confidential</span>
           <span>Generated {new Date().toLocaleDateString()}</span>

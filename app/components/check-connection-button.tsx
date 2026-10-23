@@ -47,7 +47,7 @@ export default function CheckConnectionButton({
       >
         {busy ? "Checking access…" : "Check my Analytics connection"}
       </button>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         A read-only access check. It does not create a report or confirm
         conversion tracking.
       </p>
