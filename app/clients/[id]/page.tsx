@@ -11,6 +11,10 @@ import SyncAnalyticsButton from "@/components/sync-analytics-button";
 import ReportHeaderActions from "@/components/report-header-actions";
 import ServiceCta from "@/components/service-cta";
 import { buildPreviewSummary } from "@/lib/report-summary";
+import { getMilestoneAssessment } from "@/lib/milestone-grading";
+import { removeConnectionProof } from "@/lib/connection-proof";
+import MilestoneProgress from "@/components/milestone-progress";
+import CheckConnectionButton from "@/components/check-connection-button";
 import SignOutButton from "@/components/sign-out-button";
 import { redirect } from "next/navigation";
 
@@ -21,10 +25,7 @@ async function getClient(id: string) {
     redirect("/login");
   }
 
-  let query = appData
-    .from("clients")
-    .select("*")
-    .eq("id", id);
+  let query = appData.from("clients").select("*").eq("id", id);
 
   if (!isAdminUser(user)) {
     query = query.eq("user_id", user.id);
@@ -40,6 +41,7 @@ async function getClient(id: string) {
   return {
     client: data,
     isAdminView: isAdminUser(user),
+    userScope: user.id,
   };
 }
 
@@ -311,7 +313,7 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { client, isAdminView } = await getClient(id);
+  const { client, isAdminView, userScope } = await getClient(id);
   const reports = await getReports(id);
   const approvalStatus = (client.approval_status || "pending").toLowerCase();
   const isApproved = approvalStatus === "approved";
@@ -356,6 +358,22 @@ export default async function ClientDetailPage({
         )}
       </div>
 
+      <section className="mt-6">
+        <MilestoneProgress
+          assessment={getMilestoneAssessment(reports[0] ?? null, client)}
+          clientId={id}
+          clientName={client.name}
+          userScope={userScope}
+        />
+        <Link
+          href={`/dashboard/${encodeURIComponent(id)}/edit`}
+          className="mt-3 inline-block text-sm underline"
+        >
+          Update my website setup
+        </Link>
+        {isApproved && <CheckConnectionButton clientId={id} />}
+      </section>
+
       {isApproved ? (
         <ReportForm clientId={id} />
       ) : (
@@ -380,10 +398,7 @@ export default async function ClientDetailPage({
           {reports.length === 0 ? (
             <div className="space-y-4">
               <p className="text-gray-500">No reports yet.</p>
-              <ServiceCta
-                variant="analyticsSetup"
-                clientName={client.name}
-              />
+              <ServiceCta variant="analyticsSetup" clientName={client.name} />
             </div>
           ) : (
             reports.map(
@@ -410,7 +425,8 @@ export default async function ClientDetailPage({
                   {(() => {
                     const summaryMarkdown =
                       report.ai_summary || buildPreviewSummary(report, client);
-                    const summarySections = splitSummarySections(summaryMarkdown);
+                    const summarySections =
+                      splitSummarySections(summaryMarkdown);
                     const hasAiSummary = Boolean(report.ai_summary);
 
                     return (
@@ -418,12 +434,13 @@ export default async function ClientDetailPage({
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 pr-44 marker:content-none md:px-6 md:py-5 md:pr-56">
                           <div className="min-w-0 flex-1 pr-2 md:pr-4">
                             <h3 className="text-xl font-semibold tracking-tight md:text-2xl">
-                              Conversion Report: {report.month || "No month set"}
+                              Conversion Report:{" "}
+                              {report.month || "No month set"}
                             </h3>
 
                             {report.notes && (
                               <p className="mt-2 line-clamp-1 text-sm md:line-clamp-2">
-                                {report.notes}
+                                {removeConnectionProof(report.notes)}
                               </p>
                             )}
                           </div>
@@ -440,9 +457,11 @@ export default async function ClientDetailPage({
                             bounceRate={report.bounce_rate}
                             engagementRate={report.engagement_rate}
                             conversions={report.conversions}
-                            notes={report.notes}
+                            notes={removeConnectionProof(report.notes)}
                             channelPerformance={report.channel_performance}
-                            landingPagePerformance={report.landing_page_performance}
+                            landingPagePerformance={
+                              report.landing_page_performance
+                            }
                             devicePerformance={report.device_performance}
                             keyEventPerformance={report.key_event_performance}
                             clientName={client.name}
@@ -465,133 +484,150 @@ export default async function ClientDetailPage({
                           </div>
 
                           <div className="rounded border p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <h1 className="font-semibold">
-                              {hasAiSummary ? "Conversion Report Summary" : "Summary & Insights"}
-                            </h1>
-                           
-                          </div>
-                          <div className="mt-4 space-y-5">
-                            <div className="mt-3 space-y-1 text-sm">
-                              <p>
-                                Traffic: {report.traffic ?? 0} | Page Views:{" "}
-                                {report.page_views ?? 0}
-                              </p>
-                              <p>
-                                Active Users: {report.active_users ?? 0} |
-                                {" "}Conversions: {report.conversions ?? 0}
-                              </p>
-                              <p>
-                                Bounce Rate:{" "}
-                                {((report.bounce_rate ?? 0) * 100).toFixed(1)}% |
-                                {" "}Engagement Rate:{" "}
-                                {((report.engagement_rate ?? 0) * 100).toFixed(1)}%
-                              </p>
+                            <div className="flex items-center justify-between gap-3">
+                              <h1 className="font-semibold">
+                                {hasAiSummary
+                                  ? "Conversion Report Summary"
+                                  : "Summary & Insights"}
+                              </h1>
                             </div>
-                            {summarySections.length > 0 ? (
-                              summarySections.map((section, index) => {
-                                const { bullets, remainder } = extractBulletItems(
-                                  section.content || "",
-                                );
-                                const showBulletPanel =
-                                  supportsBulletPanel(section.title) &&
-                                  bullets.length > 0;
-                                const panelStyles = bulletPanelStyles(
-                                  section.title,
-                                );
+                            <div className="mt-4 space-y-5">
+                              <div className="mt-3 space-y-1 text-sm">
+                                <p>
+                                  Traffic: {report.traffic ?? 0} | Page Views:{" "}
+                                  {report.page_views ?? 0}
+                                </p>
+                                <p>
+                                  Active Users: {report.active_users ?? 0} |{" "}
+                                  Conversions: {report.conversions ?? 0}
+                                </p>
+                                <p>
+                                  Bounce Rate:{" "}
+                                  {((report.bounce_rate ?? 0) * 100).toFixed(1)}
+                                  % | Engagement Rate:{" "}
+                                  {(
+                                    (report.engagement_rate ?? 0) * 100
+                                  ).toFixed(1)}
+                                  %
+                                </p>
+                              </div>
+                              {summarySections.length > 0 ? (
+                                summarySections.map((section, index) => {
+                                  const { bullets, remainder } =
+                                    extractBulletItems(section.content || "");
+                                  const showBulletPanel =
+                                    supportsBulletPanel(section.title) &&
+                                    bullets.length > 0;
+                                  const panelStyles = bulletPanelStyles(
+                                    section.title,
+                                  );
 
-                                return (
-                                  <div
-                                    key={`${section.title}-${index}`}
-                                    className="rounded-lg border border-slate-200 bg-white p-5 text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 print:border-slate-200 print:bg-white print:text-slate-900"
-                                  >
-                                    <div className="flex items-center gap-3 border-b border-slate-100 pb-3 dark:border-slate-800 print:border-slate-100">
-                                      <span className="text-lg" aria-hidden="true">
-                                        {sectionIcon(section.title)}
-                                      </span>
-                                      <h5 className="text-base font-semibold text-slate-950 dark:text-slate-50 print:text-slate-950">
-                                        {section.title}
-                                      </h5>
-                                    </div>
+                                  return (
+                                    <div
+                                      key={`${section.title}-${index}`}
+                                      className="rounded-lg border border-slate-200 bg-white p-5 text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 print:border-slate-200 print:bg-white print:text-slate-900"
+                                    >
+                                      <div className="flex items-center gap-3 border-b border-slate-100 pb-3 dark:border-slate-800 print:border-slate-100">
+                                        <span
+                                          className="text-lg"
+                                          aria-hidden="true"
+                                        >
+                                          {sectionIcon(section.title)}
+                                        </span>
+                                        <h5 className="text-base font-semibold text-slate-950 dark:text-slate-50 print:text-slate-950">
+                                          {section.title}
+                                        </h5>
+                                      </div>
 
-                                    {showBulletPanel && (
-                                      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                                        {bullets.map((bullet, bulletIndex) => (
-                                          <div
-                                            key={`${section.title}-bullet-${bulletIndex}`}
-                                            className={`rounded-xl border bg-white p-4 text-slate-800 shadow-sm dark:bg-slate-950 dark:text-slate-100 print:bg-white print:text-slate-800 ${panelStyles.bulletClass}`}
-                                          >
-                                            <div className="flex items-start gap-3">
-                                              <span
-                                                className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${panelStyles.dotClass}`}
-                                                aria-hidden="true"
-                                              />
-                                              <div className="min-w-0">
-                                                <span
-                                                  className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${panelStyles.badgeClass}`}
-                                                >
-                                                  {panelStyles.badge}
-                                                </span>
-                                                <p className="mt-3 text-sm leading-6 text-slate-800 dark:text-slate-100 print:text-slate-800">
-                                                  {bullet}
-                                                </p>
+                                      {showBulletPanel && (
+                                        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                                          {bullets.map(
+                                            (bullet, bulletIndex) => (
+                                              <div
+                                                key={`${section.title}-bullet-${bulletIndex}`}
+                                                className={`rounded-xl border bg-white p-4 text-slate-800 shadow-sm dark:bg-slate-950 dark:text-slate-100 print:bg-white print:text-slate-800 ${panelStyles.bulletClass}`}
+                                              >
+                                                <div className="flex items-start gap-3">
+                                                  <span
+                                                    className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${panelStyles.dotClass}`}
+                                                    aria-hidden="true"
+                                                  />
+                                                  <div className="min-w-0">
+                                                    <span
+                                                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${panelStyles.badgeClass}`}
+                                                    >
+                                                      {panelStyles.badge}
+                                                    </span>
+                                                    <p className="mt-3 text-sm leading-6 text-slate-800 dark:text-slate-100 print:text-slate-800">
+                                                      {bullet}
+                                                    </p>
+                                                  </div>
+                                                </div>
                                               </div>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
+                                            ),
+                                          )}
+                                        </div>
+                                      )}
 
-                                    {remainder && (
-                                      <ReportMarkdown
-                                        markdown={remainder}
-                                        className="prose prose-slate mt-4 max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
+                                      {remainder && (
+                                        <ReportMarkdown
+                                          markdown={remainder}
+                                          className="prose prose-slate mt-4 max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
                                         />
-                                    )}
+                                      )}
 
-                                    {!showBulletPanel && !remainder && (
-                                      <div className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300 print:text-slate-600">
-                                        No details provided.
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <ReportMarkdown
-                                markdown={summaryMarkdown}
-                                className="prose prose-slate mt-2 max-w-none prose-headings:text-slate-900 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
+                                      {!showBulletPanel && !remainder && (
+                                        <div className="mt-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300 print:text-slate-600">
+                                          No details provided.
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <ReportMarkdown
+                                  markdown={summaryMarkdown}
+                                  className="prose prose-slate mt-2 max-w-none prose-headings:text-slate-900 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
                                 />
-                            )}
+                              )}
+                            </div>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {hasAiSummary && (
+                                <>
+                                  <SyncAnalyticsButton reportId={report.id} />
+                                  <RegenerateSummaryButton
+                                    reportId={report.id}
+                                    month={report.month}
+                                    traffic={report.traffic}
+                                    pageViews={report.page_views}
+                                    activeUsers={report.active_users}
+                                    bounceRate={report.bounce_rate}
+                                    engagementRate={report.engagement_rate}
+                                    conversions={report.conversions}
+                                    notes={removeConnectionProof(report.notes)}
+                                    channelPerformance={
+                                      report.channel_performance
+                                    }
+                                    landingPagePerformance={
+                                      report.landing_page_performance
+                                    }
+                                    devicePerformance={
+                                      report.device_performance
+                                    }
+                                    keyEventPerformance={
+                                      report.key_event_performance
+                                    }
+                                  />
+                                </>
+                              )}
+                            </div>
+                            <p className="mt-5 text-xs text-slate-500">
+                              Use the milestone next steps above for DIY
+                              guidance or help from George. Saved AI commentary
+                              may reflect earlier grading rules; it is not
+                              regenerated automatically.
+                            </p>
                           </div>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {hasAiSummary && (
-                              <>
-                              <SyncAnalyticsButton reportId={report.id} />
-                              <RegenerateSummaryButton
-                                reportId={report.id}
-                                month={report.month}
-                                traffic={report.traffic}
-                                pageViews={report.page_views}
-                                activeUsers={report.active_users}
-                                bounceRate={report.bounce_rate}
-                                engagementRate={report.engagement_rate}
-                                conversions={report.conversions}
-                                notes={report.notes}
-                                channelPerformance={report.channel_performance}
-                                landingPagePerformance={report.landing_page_performance}
-                                devicePerformance={report.device_performance}
-                                keyEventPerformance={report.key_event_performance}
-                              />
-                              </>
-                            )}
-                          </div>
-                          <ServiceCta
-                            variant="reportFix"
-                            clientName={client.name}
-                            className="mt-5"
-                          />
-                        </div>
                         </div>
                       </>
                     );

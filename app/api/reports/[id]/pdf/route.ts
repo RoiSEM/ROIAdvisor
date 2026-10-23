@@ -1,6 +1,14 @@
 import { appData } from "@/lib/data-store";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
-import { buildPreviewSummary, getReportHealthScore } from "@/lib/report-summary";
+import {
+  buildPreviewSummary,
+  getReportHealthScore,
+} from "@/lib/report-summary";
+import { removeConnectionProof } from "@/lib/connection-proof";
+import {
+  getMilestoneAssessment,
+  getNextMilestones,
+} from "@/lib/milestone-grading";
 import {
   PDFDocument,
   StandardFonts,
@@ -252,7 +260,8 @@ async function embedLogoImage(
       return null;
     }
 
-    const contentType = response.headers.get("content-type")?.toLowerCase() || "";
+    const contentType =
+      response.headers.get("content-type")?.toLowerCase() || "";
     const bytes = new Uint8Array(await response.arrayBuffer());
     const pathname = url.pathname.toLowerCase();
 
@@ -292,24 +301,13 @@ function getContainedImageRect(
   };
 }
 
-const reportCta = {
-  eyebrow: "PAGE IMPROVEMENT",
-  title: "Get redesign help for your contact page.",
-  description:
-    "Improve CTA clarity, trust signals, form flow, and mobile layout so more visitors become leads.",
-  action: "Email george@roisem.com for contact page help.",
-};
-
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-    const {
-      user,
-      error: userError,
-    } = await getRequestUser(req);
+    const { user, error: userError } = await getRequestUser(req);
 
     if (userError || !user) {
       return new Response("Unauthorized", { status: 401 });
@@ -359,7 +357,8 @@ export async function GET(
       ? report.clients[0]
       : report.clients;
 
-    const summaryMarkdown = report.ai_summary || buildPreviewSummary(report, client);
+    const summaryMarkdown =
+      report.ai_summary || buildPreviewSummary(report, client);
     const summarySections = splitSummarySections(summaryMarkdown);
     const healthScore = getReportHealthScore(report, client);
 
@@ -455,77 +454,34 @@ export async function GET(
         color: rgb(1, 1, 1),
       });
 
-      drawWrappedText(text, margin + inset, y - 14, width, 11, font, colors.ink, 5);
+      drawWrappedText(
+        text,
+        margin + inset,
+        y - 14,
+        width,
+        11,
+        font,
+        colors.ink,
+        5,
+      );
       y -= height + 18;
     };
 
     const drawCtaBlock = () => {
-      const height = 94;
-
-      ensureSpace(height + 18);
-
-      page.drawRectangle({
-        x: margin,
-        y: y - height,
-        width: contentWidth,
-        height,
-        borderColor: colors.border,
-        borderWidth: 1,
-        color: colors.subtle,
-      });
-
-      page.drawText(reportCta.eyebrow, {
-        x: margin + 16,
-        y: y - 20,
-        size: 8,
-        font: boldFont,
-        color: colors.muted,
-      });
-
-      page.drawText(reportCta.title, {
-        x: margin + 16,
-        y: y - 42,
-        size: 14,
-        font: boldFont,
-        color: colors.ink,
-      });
-
-      drawWrappedText(
-        reportCta.description,
-        margin + 16,
-        y - 52,
-        contentWidth - 210,
-        10,
-        font,
-        colors.muted,
-        4,
+      drawSectionTitle("Your next steps");
+      drawParagraphBlock(
+        "Scoring rules launch-v1 use current saved setup and this report's measurements. Saved AI commentary may refer to earlier grading rules and is not regenerated automatically.",
       );
-
-      page.drawRectangle({
-        x: pageWidth - margin - 184,
-        y: y - 58,
-        width: 168,
-        height: 28,
-        color: colors.ink,
-      });
-
-      page.drawText("GET CONTACT PAGE HELP", {
-        x: pageWidth - margin - 168,
-        y: y - 48,
-        size: 8,
-        font: boldFont,
-        color: rgb(1, 1, 1),
-      });
-
-      page.drawText(reportCta.action, {
-        x: margin + 16,
-        y: y - 80,
-        size: 9,
-        font,
-        color: colors.muted,
-      });
-
-      y -= height + 18;
+      const next = getNextMilestones(getMilestoneAssessment(report, client));
+      for (const milestone of next) {
+        drawParagraphBlock(
+          `${milestone.title}\n${milestone.description}\nShow me how: /guides/${milestone.guideSlug}\nGet help from George: george@roisem.com — ${milestone.title}`,
+        );
+      }
+      if (!next.length)
+        drawParagraphBlock(
+          "All current milestones are complete. Keep reviewing results; there is still room to improve.",
+        );
     };
 
     const getReportCardColors = (status: string) => {
@@ -593,9 +549,9 @@ export async function GET(
         color: colors.ink,
       });
 
-      const scoreLine = `SETUP ${healthScore.setupScore}/90  PERFORMANCE ${
+      const scoreLine = `READINESS ${healthScore.setupScore}/70  RESULTS ${
         healthScore.performanceAdjustment >= 0 ? "+" : ""
-      }${healthScore.performanceAdjustment}/10`;
+      }${healthScore.performanceAdjustment}/29`;
       const scoreLineWidth = font.widthOfTextAtSize(scoreLine, 8);
 
       page.drawText(scoreLine, {
@@ -902,7 +858,10 @@ export async function GET(
       let cardsHeight = 0;
 
       for (let index = 0; index < cardHeights.length; index += 2) {
-        cardsHeight += Math.max(cardHeights[index], cardHeights[index + 1] ?? 0);
+        cardsHeight += Math.max(
+          cardHeights[index],
+          cardHeights[index + 1] ?? 0,
+        );
         if (index + 2 < cardHeights.length) cardsHeight += rowGap;
       }
 
@@ -1046,7 +1005,9 @@ export async function GET(
       color: colors.ink,
     });
 
-    const clientDetails = [client?.website, client?.email].filter(Boolean).join("\n");
+    const clientDetails = [client?.website, client?.email]
+      .filter(Boolean)
+      .join("\n");
 
     if (clientDetails) {
       y -= 24;
@@ -1100,7 +1061,10 @@ export async function GET(
       { label: "Page Views", value: formatNumber(report.page_views) },
       { label: "Active Users", value: formatNumber(report.active_users) },
       { label: "Bounce Rate", value: formatPercent(report.bounce_rate) },
-      { label: "Engagement Rate", value: formatPercent(report.engagement_rate) },
+      {
+        label: "Engagement Rate",
+        value: formatPercent(report.engagement_rate),
+      },
       { label: "Conversions", value: formatNumber(report.conversions) },
     ];
 
@@ -1194,7 +1158,7 @@ export async function GET(
       ),
     });
 
-    page.drawText(pdfSafeText(healthScore.label.toUpperCase()), {
+    page.drawText("PROGRESS", {
       x: margin + 24,
       y: y - 33,
       size: 8,
@@ -1220,7 +1184,7 @@ export async function GET(
       color: rgb(1, 1, 1),
     });
 
-    page.drawText(pdfSafeText(`GRADE ${healthScore.grade}`), {
+    page.drawText(pdfSafeText(healthScore.grade), {
       x: margin + 24,
       y: y - 59,
       size: 7,
@@ -1247,9 +1211,9 @@ export async function GET(
     });
 
     page.drawText(
-      `SETUP ${healthScore.setupScore}/90  PERFORMANCE ${
+      `READINESS ${healthScore.setupScore}/70  RESULTS ${
         healthScore.performanceAdjustment >= 0 ? "+" : ""
-      }${healthScore.performanceAdjustment}/10`,
+      }${healthScore.performanceAdjustment}/29`,
       {
         x: margin + 16,
         y: y - 80,
@@ -1282,7 +1246,9 @@ export async function GET(
     drawReportCardBlock();
 
     drawSectionTitle("Notes");
-    drawParagraphBlock(report.notes || "No notes provided.");
+    drawParagraphBlock(
+      removeConnectionProof(report.notes) || "No notes provided.",
+    );
 
     drawSectionTitle("Strategic Analysis");
 

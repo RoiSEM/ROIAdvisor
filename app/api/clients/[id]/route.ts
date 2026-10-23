@@ -1,4 +1,5 @@
 import { appData } from "@/lib/data-store";
+import { preserveConnectionProof } from "@/lib/connection-proof";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 
 function getMissingColumnName(message: string | undefined) {
@@ -52,19 +53,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const {
-      user,
-      error: userError,
-    } = await getRequestUser(req);
+    const { user, error: userError } = await getRequestUser(req);
 
     if (userError || !user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let query = appData
-      .from("clients")
-      .select("*")
-      .eq("id", id);
+    let query = appData.from("clients").select("*").eq("id", id);
 
     if (!isAdminUser(user)) {
       query = query.eq("user_id", user.id);
@@ -73,7 +68,10 @@ export async function GET(
     const { data, error } = await query.maybeSingle();
 
     if (error || !data) {
-      return Response.json({ error: error?.message || "Client not found" }, { status: 404 });
+      return Response.json(
+        { error: error?.message || "Client not found" },
+        { status: 404 },
+      );
     }
 
     return Response.json(data);
@@ -90,10 +88,7 @@ export async function PATCH(
   try {
     const { id } = await params;
 
-    const {
-      user,
-      error: userError,
-    } = await getRequestUser(req);
+    const { user, error: userError } = await getRequestUser(req);
 
     if (userError || !user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -103,7 +98,7 @@ export async function PATCH(
 
     let existingQuery = appData
       .from("clients")
-      .select("id")
+      .select("id, ga4_property_id, tracking_notes")
       .eq("id", id);
 
     if (!isAdmin) {
@@ -178,7 +173,15 @@ export async function PATCH(
       design_concerns,
       ad_channel_notes,
       offer_message_concerns,
-      tracking_notes,
+      tracking_notes: preserveConnectionProof(
+        existingClient.tracking_notes,
+        tracking_notes === undefined
+          ? existingClient.tracking_notes
+          : tracking_notes,
+        ga4_property_id === undefined
+          ? existingClient.ga4_property_id
+          : ga4_property_id,
+      ),
       marketing_channels,
       running_ads,
       client_notes,
@@ -201,10 +204,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const {
-      user,
-      error: userError,
-    } = await getRequestUser(req);
+    const { user, error: userError } = await getRequestUser(req);
 
     if (userError || !user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });

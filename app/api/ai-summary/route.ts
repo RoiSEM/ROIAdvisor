@@ -12,10 +12,7 @@ import { withUsage } from "@/lib/usage";
 
 export async function POST(req: Request) {
   try {
-    const {
-      user,
-      error: userError,
-    } = await getRequestUser(req);
+    const { user, error: userError } = await getRequestUser(req);
 
     if (userError || !user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -49,7 +46,8 @@ export async function POST(req: Request) {
       clientQuery = clientQuery.eq("user_id", user.id);
     }
 
-    const { data: client, error: clientError } = await clientQuery.maybeSingle();
+    const { data: client, error: clientError } =
+      await clientQuery.maybeSingle();
 
     if (clientError || !client) {
       return Response.json(
@@ -59,7 +57,8 @@ export async function POST(req: Request) {
     }
 
     if (
-      typeof report.month !== "string" || !report.month.trim() ||
+      typeof report.month !== "string" ||
+      !report.month.trim() ||
       !hasValidReportMetrics({
         traffic: report.traffic,
         conversions: report.conversions,
@@ -70,24 +69,37 @@ export async function POST(req: Request) {
       })
     ) {
       return Response.json(
-        { error: "This report has incomplete or invalid analytics. Sync analytics or create a valid uploaded report before generating a summary." },
+        {
+          error:
+            "This report has incomplete or invalid analytics. Sync analytics or create a valid uploaded report before generating a summary.",
+        },
         { status: 409 },
       );
     }
 
     return await withUsage(user.id, "ai", async () => {
       const reportData: SummaryReportData = {
-        month: report.month ?? null,
+        month: report.month,
+        start_date: report.start_date,
+        end_date: report.end_date,
         traffic: report.traffic ?? null,
         page_views: report.page_views ?? null,
         active_users: report.active_users ?? null,
         bounce_rate: report.bounce_rate ?? null,
         engagement_rate: report.engagement_rate ?? null,
         conversions: report.conversions ?? null,
-        channel_performance: Array.isArray(report.channel_performance) ? report.channel_performance : null,
-        landing_page_performance: Array.isArray(report.landing_page_performance) ? report.landing_page_performance : null,
-        device_performance: Array.isArray(report.device_performance) ? report.device_performance : null,
-        key_event_performance: Array.isArray(report.key_event_performance) ? report.key_event_performance : null,
+        channel_performance: Array.isArray(report.channel_performance)
+          ? report.channel_performance
+          : null,
+        landing_page_performance: Array.isArray(report.landing_page_performance)
+          ? report.landing_page_performance
+          : null,
+        device_performance: Array.isArray(report.device_performance)
+          ? report.device_performance
+          : null,
+        key_event_performance: Array.isArray(report.key_event_performance)
+          ? report.key_event_performance
+          : null,
         notes: report.notes ?? null,
       };
 
@@ -107,7 +119,7 @@ export async function POST(req: Request) {
           {
             role: "system",
             content:
-              "You are a senior agency owner and conversion strategist with a plain-spoken, common-sense business voice. You sound like someone who has built companies, spent real ad dollars, fixed messy funnels, and cares about what turns into leads and revenue. You are direct, practical, and honest without being rude. Do not imitate or mention any public figure by name.\n\nGuidelines:\n- Prioritize conversion performance, lead quality, revenue impact, and data confidence over raw traffic metrics\n- Treat SEO, ads, design, and technical issues only as conversion factors; do not evaluate them for their own sake\n- If conversions are 0, say so plainly and diagnose the most likely business problem\n- If conversion performance is strong, say the funnel is working and focus on how to protect or scale it\n- Distinguish confirmed issues from missing or uncertain data\n- If tracking, CTA, funnel, technical, design, or channel details are missing, say they are not confirmed and do not assume\n- Do not simply describe metrics; translate them into plain business meaning\n- Identify a primary conversion issue only when one is evident\n- Prioritize issues that directly affect conversions over surface-level observations\n- Make recommendations specific, prioritized, and tied to the report mode, grade, and SWOT evidence\n- Keep the tone straight-talking, confident, client-friendly, and easy to understand\n- Avoid academic language, marketing fluff, corporate buzzwords, and vague statements\n- Prefer short sentences. Use simple words. Say what matters and why it matters.\n\nYour output should read like a practical operator giving the client the truth, not like an analytics report.",
+              "You are a senior agency owner and conversion strategist with a plain-spoken, common-sense business voice. You sound like someone who has built companies, spent real ad dollars, fixed messy funnels, and cares about what turns into leads and revenue. You are direct, practical, and honest without being rude. Do not imitate or mention any public figure by name.\n\nGuidelines:\n- Prioritize conversion performance, lead quality, revenue impact, and data confidence over raw traffic metrics\n- Treat SEO, ads, design, and technical issues only as conversion factors; do not evaluate them for their own sake\n- If conversions are 0, say no events were recorded; do not infer zero inquiries or diagnose a failed website without specific evidence\n- Recognize recorded results while distinguishing event counts, unique leads, profitability and evidence confidence; a high readiness score is not proven business performance\n- Distinguish confirmed issues from missing or uncertain data\n- If tracking, CTA, funnel, technical, design, or channel details are missing, say they are not confirmed and do not assume\n- Do not simply describe metrics; translate them into plain business meaning\n- Identify a primary conversion issue only when one is evident\n- Prioritize issues that directly affect conversions over surface-level observations\n- Make recommendations specific, prioritized, and tied to the report mode, grade, and SWOT evidence\n- Keep the tone straight-talking, confident, client-friendly, and easy to understand\n- Avoid academic language, marketing fluff, corporate buzzwords, and vague statements\n- Prefer short sentences. Use simple words. Say what matters and why it matters.\n\nYour output should read like a practical operator giving the client the truth, not like an analytics report.",
           },
           {
             role: "user",

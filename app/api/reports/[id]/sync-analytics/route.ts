@@ -2,6 +2,8 @@ import { appData } from "@/lib/data-store";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import { GoogleAnalyticsConfigError, getGA4Report } from "@/lib/analytics/ga4";
 import { withUsage } from "@/lib/usage";
+import { hasValidReportMetrics } from "@/lib/report-metrics";
+import { writeConnectionProof } from "@/lib/connection-proof";
 
 function getMissingColumnName(message: string | undefined) {
   if (!message) return null;
@@ -10,19 +12,23 @@ function getMissingColumnName(message: string | undefined) {
   return match?.[1] ?? null;
 }
 
-async function updateReportAnalyticsWithSchemaFallback(reportId: string, payload: {
-  traffic: number;
-  page_views: number;
-  active_users: number;
-  bounce_rate: number;
-  engagement_rate: number;
-  conversions: number;
-  channel_performance: unknown;
-  landing_page_performance: unknown;
-  device_performance: unknown;
-  key_event_performance: unknown;
-  analytics_synced_at: string;
-}) {
+async function updateReportAnalyticsWithSchemaFallback(
+  reportId: string,
+  payload: {
+    traffic: number;
+    page_views: number;
+    active_users: number;
+    bounce_rate: number;
+    engagement_rate: number;
+    conversions: number;
+    channel_performance: unknown;
+    landing_page_performance: unknown;
+    device_performance: unknown;
+    key_event_performance: unknown;
+    analytics_synced_at: string;
+    notes: string;
+  },
+) {
   const updatePayload: Record<string, unknown> = { ...payload };
   const optionalColumns = new Set([
     "analytics_synced_at",
@@ -54,7 +60,7 @@ async function updateReportAnalyticsWithSchemaFallback(reportId: string, payload
 }
 
 async function getReportForAnalytics(reportId: string) {
-  let selectedColumns = "id, client_id, start_date, end_date";
+  let selectedColumns = "id, client_id, start_date, end_date, notes";
 
   while (true) {
     const { data, error } = await appData
@@ -73,7 +79,7 @@ async function getReportForAnalytics(reportId: string) {
       missingColumn &&
       (missingColumn === "start_date" || missingColumn === "end_date")
     ) {
-      selectedColumns = "id, client_id";
+      selectedColumns = "id, client_id, notes";
       continue;
     }
 
@@ -86,6 +92,7 @@ type AnalyticsReportRecord = {
   client_id: string;
   start_date?: string | null;
   end_date?: string | null;
+  notes?: string | null;
 };
 
 export async function POST(
@@ -94,16 +101,14 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const {
-      user,
-      error: userError,
-    } = await getRequestUser(req);
+    const { user, error: userError } = await getRequestUser(req);
 
     if (userError || !user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: report, error: reportError } = await getReportForAnalytics(id);
+    const { data: report, error: reportError } =
+      await getReportForAnalytics(id);
 
     if (reportError || !report) {
       return Response.json({ error: "Report not found" }, { status: 404 });
@@ -120,7 +125,8 @@ export async function POST(
       clientQuery = clientQuery.eq("user_id", user.id);
     }
 
-    const { data: client, error: clientError } = await clientQuery.maybeSingle();
+    const { data: client, error: clientError } =
+      await clientQuery.maybeSingle();
 
     if (clientError || !client) {
       return Response.json({ error: "Client not found" }, { status: 404 });
@@ -146,10 +152,27 @@ export async function POST(
         devicePerformance,
         keyEventPerformance,
       } = await getGA4Report(client.ga4_property_id, {
-          startDate: analyticsReport.start_date ?? null,
-          endDate: analyticsReport.end_date ?? null,
-        });
+        startDate: analyticsReport.start_date ?? null,
+        endDate: analyticsReport.end_date ?? null,
+      });
 
+      if (
+        !hasValidReportMetrics({
+          traffic,
+          conversions,
+          pageViews,
+          activeUsers,
+          bounceRate,
+          engagementRate,
+        })
+      )
+        return Response.json(
+          {
+            error:
+              "Analytics returned invalid measurements. No update was saved.",
+          },
+          { status: 502 },
+        );
       const updateError = await updateReportAnalyticsWithSchemaFallback(id, {
         traffic,
         page_views: pageViews,
@@ -162,6 +185,11 @@ export async function POST(
         device_performance: devicePerformance,
         key_event_performance: keyEventPerformance,
         analytics_synced_at: new Date().toISOString(),
+        notes: writeConnectionProof(analyticsReport.notes, {
+          source: "ga4",
+          propertyId: client.ga4_property_id,
+          verifiedAt: new Date().toISOString(),
+        }),
       });
 
       if (updateError) {
@@ -189,10 +217,7 @@ export async function POST(
     console.error("Sync analytics error:", error);
 
     if (error instanceof GoogleAnalyticsConfigError) {
-      return Response.json(
-        { error: error.message },
-        { status: 400 },
-      );
+      return Response.json({ error: error.message }, { status: 400 });
     }
 
     return Response.json(

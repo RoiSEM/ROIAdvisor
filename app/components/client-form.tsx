@@ -1,6 +1,13 @@
 "use client";
 
 import ServiceCta from "@/components/service-cta";
+import Link from "next/link";
+import {
+  parseReadinessProfile,
+  serializeReadinessProfile,
+  humanTrackingNotes,
+  type ReadinessProfile,
+} from "@/lib/milestone-grading";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -288,13 +295,34 @@ export default function ClientForm({
     getGuidedValue(initialKnownIssues, "What seems broken") ||
       (!initialKnownIssues.startsWith("- ") ? initialKnownIssues : ""),
   );
-  const [technicalIssues, setTechnicalIssues] = useState(initialTechnicalIssues);
+  const [technicalIssues, setTechnicalIssues] = useState(
+    initialTechnicalIssues,
+  );
   const [designConcerns, setDesignConcerns] = useState(initialDesignConcerns);
   const [adChannelNotes, setAdChannelNotes] = useState(initialAdChannelNotes);
   const [offerMessageConcerns, setOfferMessageConcerns] = useState(
     initialOfferMessageConcerns,
   );
-  const [trackingNotes, setTrackingNotes] = useState(initialTrackingNotes);
+  const [trackingNotes, setTrackingNotes] = useState(
+    humanTrackingNotes(initialTrackingNotes),
+  );
+  const [evidence, setEvidence] = useState(() => {
+    const p = parseReadinessProfile(initialTrackingNotes);
+    return {
+      testDate: p.trackingTest?.date || "",
+      testOutcome: p.trackingTest?.outcome || "",
+      testNote: p.trackingTest?.note || "",
+      inquiryProcess: p.inquiryProcess || "",
+      targetEventRate: p.targetEventRate?.toString() || "",
+      comparisonStart: p.comparison?.startDate || "",
+      comparisonEnd: p.comparison?.endDate || "",
+      comparisonTraffic: p.comparison?.traffic.toString() || "",
+      comparisonConversions: p.comparison?.conversions.toString() || "",
+      experimentDate: p.experiment?.date || "",
+      experimentOutcome: p.experiment?.outcome || "",
+      experimentNote: p.experiment?.note || "",
+    };
+  });
   const [marketingChannels, setMarketingChannels] = useState<string[]>(
     normalizeMarketingChannels(initialMarketingChannels),
   );
@@ -364,6 +392,115 @@ export default function ClientForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const numeric = [
+      monthlyGoal,
+      averageConversionValue,
+      evidence.targetEventRate,
+      evidence.comparisonTraffic,
+      evidence.comparisonConversions,
+    ];
+    if (
+      numeric.some(
+        (v) => v.trim() && (!Number.isFinite(Number(v)) || Number(v) < 0),
+      ) ||
+      (evidence.targetEventRate.trim() &&
+        (Number(evidence.targetEventRate) <= 0 ||
+          Number(evidence.targetEventRate) > 100))
+    ) {
+      alert(
+        "Use valid non-negative numbers; an event-ratio target must be greater than zero and at most 100. Leave unknown values blank.",
+      );
+      return;
+    }
+    const dates = [
+      evidence.testDate,
+      evidence.comparisonStart,
+      evidence.comparisonEnd,
+      evidence.experimentDate,
+    ];
+    if (
+      dates.some(
+        (v) =>
+          v &&
+          (!/^\d{4}-\d{2}-\d{2}$/.test(v) ||
+            !Number.isFinite(Date.parse(v)) ||
+            new Date(v).toISOString().slice(0, 10) !== v ||
+            Date.parse(v) > Date.now()),
+      )
+    ) {
+      alert("Use valid dates that are not in the future.");
+      return;
+    }
+    if (
+      (evidence.testDate || evidence.testOutcome || evidence.testNote) &&
+      (!evidence.testDate || !evidence.testOutcome || !evidence.testNote.trim())
+    ) {
+      alert(
+        "Document the test date, outcome and what you checked, or leave the test unanswered.",
+      );
+      return;
+    }
+    const hasComparison = Boolean(
+      evidence.comparisonStart ||
+      evidence.comparisonEnd ||
+      evidence.comparisonTraffic ||
+      evidence.comparisonConversions,
+    );
+    if (
+      hasComparison &&
+      (!evidence.comparisonStart ||
+        !evidence.comparisonEnd ||
+        !evidence.comparisonTraffic.trim() ||
+        !evidence.comparisonConversions.trim() ||
+        evidence.comparisonStart > evidence.comparisonEnd)
+    ) {
+      alert(
+        "Complete the comparison dates and counts, or leave the comparison unanswered.",
+      );
+      return;
+    }
+    if (
+      (evidence.experimentDate ||
+        evidence.experimentOutcome ||
+        evidence.experimentNote) &&
+      (!evidence.experimentDate ||
+        !evidence.experimentOutcome ||
+        !evidence.experimentNote.trim())
+    ) {
+      alert(
+        "Complete the change date, outcome and notes, or leave the change unanswered.",
+      );
+      return;
+    }
+    const profile: ReadinessProfile = {
+      trackingTest: evidence.testDate
+        ? {
+            date: evidence.testDate,
+            outcome: evidence.testOutcome as "passed" | "failed",
+            note: evidence.testNote,
+          }
+        : null,
+      inquiryProcess: evidence.inquiryProcess || null,
+      targetEventRate: evidence.targetEventRate.trim()
+        ? Number(evidence.targetEventRate)
+        : null,
+      comparison: hasComparison
+        ? {
+            startDate: evidence.comparisonStart,
+            endDate: evidence.comparisonEnd,
+            traffic: Number(evidence.comparisonTraffic),
+            conversions: Number(evidence.comparisonConversions),
+          }
+        : null,
+      experiment: evidence.experimentDate
+        ? {
+            date: evidence.experimentDate,
+            note: evidence.experimentNote,
+            outcome: evidence.experimentOutcome as
+              "improved" | "inconclusive" | "declined",
+          }
+        : null,
+    };
     setLoading(true);
 
     try {
@@ -412,7 +549,7 @@ export default function ClientForm({
             design_concerns: designConcerns || null,
             ad_channel_notes: adChannelNotes || null,
             offer_message_concerns: offerMessageConcerns || null,
-            tracking_notes: trackingNotes || null,
+            tracking_notes: serializeReadinessProfile(trackingNotes, profile),
             marketing_channels: marketingChannels,
             running_ads: runningAds === "" ? null : runningAds === "yes",
             client_notes: clientNotes || null,
@@ -453,6 +590,12 @@ export default function ClientForm({
         setAdChannelNotes("");
         setOfferMessageConcerns("");
         setTrackingNotes("");
+        setEvidence(
+          (prev) =>
+            Object.fromEntries(
+              Object.keys(prev).map((key) => [key, ""]),
+            ) as typeof prev,
+        );
         setMarketingChannels([]);
         setRunningAds("");
         setClientNotes("");
@@ -602,6 +745,17 @@ export default function ClientForm({
             <p className="mt-1 text-xs text-gray-500">
               Use the numeric GA4 Property ID, not the Measurement ID.
             </p>
+            <p className="mt-2 text-xs">
+              In GA4 property access management, add{" "}
+              <code>
+                ga4-service@roi-analytics-490813.iam.gserviceaccount.com
+              </code>{" "}
+              with Viewer access. Save the property ID, ask George to approve
+              access, then use the connection check on your website page.{" "}
+              <Link href="/guides/connect-analytics" className="underline">
+                Connection tutorial
+              </Link>
+            </p>
           </div>
         </div>
 
@@ -611,6 +765,283 @@ export default function ClientForm({
           className="mt-2"
         />
       </section>
+
+      <details className="rounded-xl border border-slate-300 p-4">
+        <summary className="cursor-pointer font-semibold">
+          Readiness checks and optional results context
+        </summary>
+        <p className="mt-3 text-sm">
+          These checks are owner-reported. Unknown answers are welcome. A simple
+          list or test example can establish a follow-up process before real
+          inquiries arrive. Do not include customer details or credentials.
+        </p>
+        <Link
+          href="/guides/test-tracking"
+          className="mt-2 inline-block text-sm underline"
+        >
+          Show me how to test tracking
+        </Link>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="readiness-testDate"
+              className="mb-1 block text-sm font-medium"
+            >
+              Test date
+            </label>
+            <input
+              id="readiness-testDate"
+              type="date"
+              value={evidence.testDate}
+              onChange={(e) =>
+                setEvidence((prev) => ({ ...prev, testDate: e.target.value }))
+              }
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-testOutcome"
+              className="mb-1 block text-sm font-medium"
+            >
+              Test outcome
+            </label>
+            <select
+              id="readiness-testOutcome"
+              value={evidence.testOutcome}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  testOutcome: e.target.value,
+                }))
+              }
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Not answered</option>
+              <option value="passed">
+                Passed — submission, receipt and recording checked
+              </option>
+              <option value="failed">Failed — needs attention</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-testNote"
+              className="mb-1 block text-sm font-medium"
+            >
+              What did you check?
+            </label>
+            <input
+              id="readiness-testNote"
+              type="text"
+              value={evidence.testNote}
+              onChange={(e) =>
+                setEvidence((prev) => ({ ...prev, testNote: e.target.value }))
+              }
+              maxLength={500}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-inquiryProcess"
+              className="mb-1 block text-sm font-medium"
+            >
+              How do you record and review inquiries?
+            </label>
+            <input
+              id="readiness-inquiryProcess"
+              type="text"
+              value={evidence.inquiryProcess}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  inquiryProcess: e.target.value,
+                }))
+              }
+              maxLength={500}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-targetEventRate"
+              className="mb-1 block text-sm font-medium"
+            >
+              Your target event ratio (%) — optional, not an industry benchmark
+            </label>
+            <input
+              id="readiness-targetEventRate"
+              type="number"
+              value={evidence.targetEventRate}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  targetEventRate: e.target.value,
+                }))
+              }
+              min="0"
+              step="any"
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-comparisonStart"
+              className="mb-1 block text-sm font-medium"
+            >
+              Earlier comparison start date
+            </label>
+            <input
+              id="readiness-comparisonStart"
+              type="date"
+              value={evidence.comparisonStart}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  comparisonStart: e.target.value,
+                }))
+              }
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-comparisonEnd"
+              className="mb-1 block text-sm font-medium"
+            >
+              Earlier comparison end date
+            </label>
+            <input
+              id="readiness-comparisonEnd"
+              type="date"
+              value={evidence.comparisonEnd}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  comparisonEnd: e.target.value,
+                }))
+              }
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-comparisonTraffic"
+              className="mb-1 block text-sm font-medium"
+            >
+              Earlier comparison sessions
+            </label>
+            <input
+              id="readiness-comparisonTraffic"
+              type="number"
+              value={evidence.comparisonTraffic}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  comparisonTraffic: e.target.value,
+                }))
+              }
+              min="0"
+              step="any"
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-comparisonConversions"
+              className="mb-1 block text-sm font-medium"
+            >
+              Earlier comparison recorded events
+            </label>
+            <input
+              id="readiness-comparisonConversions"
+              type="number"
+              value={evidence.comparisonConversions}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  comparisonConversions: e.target.value,
+                }))
+              }
+              min="0"
+              step="any"
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-experimentDate"
+              className="mb-1 block text-sm font-medium"
+            >
+              Change or experiment date
+            </label>
+            <input
+              id="readiness-experimentDate"
+              type="date"
+              value={evidence.experimentDate}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  experimentDate: e.target.value,
+                }))
+              }
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-experimentOutcome"
+              className="mb-1 block text-sm font-medium"
+            >
+              Change outcome
+            </label>
+            <select
+              id="readiness-experimentOutcome"
+              value={evidence.experimentOutcome}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  experimentOutcome: e.target.value,
+                }))
+              }
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Not answered</option>
+              <option value="improved">Improved</option>
+              <option value="inconclusive">Inconclusive</option>
+              <option value="declined">Declined</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="readiness-experimentNote"
+              className="mb-1 block text-sm font-medium"
+            >
+              What changed and what did you learn?
+            </label>
+            <input
+              id="readiness-experimentNote"
+              type="text"
+              value={evidence.experimentNote}
+              onChange={(e) =>
+                setEvidence((prev) => ({
+                  ...prev,
+                  experimentNote: e.target.value,
+                }))
+              }
+              maxLength={500}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          Comparisons need earlier, nonoverlapping periods of equal length.
+          Documenting a change does not prove causation or a statistically
+          significant A/B test. Points depend on the scoring checks, not simply
+          filling these fields.
+        </p>
+      </details>
 
       {isAdmin && isEditMode && (
         <section className="space-y-3 border-t pt-5">
@@ -676,9 +1107,7 @@ export default function ClientForm({
 
       <section className="space-y-3 border-t pt-5">
         <div>
-          <h2 className="text-lg font-semibold">
-            Conversion Goals & Tracking
-          </h2>
+          <h2 className="text-lg font-semibold">Conversion Goals & Tracking</h2>
           <p className="mt-1 text-sm">
             Optional. The more context you add here, the smarter the reports
             get.
@@ -687,7 +1116,9 @@ export default function ClientForm({
 
         <div className="grid gap-3 lg:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium">Primary Goal</label>
+            <label className="mb-1 block text-sm font-medium">
+              Primary Goal
+            </label>
             <select
               value={primaryGoal}
               onChange={(e) => setPrimaryGoal(e.target.value)}

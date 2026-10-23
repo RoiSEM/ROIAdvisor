@@ -5,8 +5,16 @@ import ReportMarkdown from "@/components/report-markdown";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import PrintPageButton from "@/components/print-page-button";
-import ServiceCta from "@/components/service-cta";
-import { buildPreviewSummary, getReportHealthScore } from "@/lib/report-summary";
+import {
+  getMilestoneAssessment,
+  getNextMilestones,
+} from "@/lib/milestone-grading";
+import { milestoneHelpHref } from "@/lib/milestone-guides";
+import {
+  buildPreviewSummary,
+  getReportHealthScore,
+} from "@/lib/report-summary";
+import { removeConnectionProof } from "@/lib/connection-proof";
 
 export const dynamic = "force-dynamic";
 
@@ -359,7 +367,8 @@ export default async function PrintReportPage({
   const client = Array.isArray(report.clients)
     ? report.clients[0]
     : report.clients;
-  const summaryMarkdown = report.ai_summary || buildPreviewSummary(report, client);
+  const summaryMarkdown =
+    report.ai_summary || buildPreviewSummary(report, client);
   const summarySections = splitSummarySections(summaryMarkdown);
   const hasAiSummary = Boolean(report.ai_summary);
 
@@ -421,9 +430,7 @@ export default async function PrintReportPage({
             <h1 className="mt-2 text-4xl font-bold tracking-tight">
               {client?.name || "Website Report"}
             </h1>
-            <p className="mt-3 text-lg ">
-              {formatReportMonth(report.month)}
-            </p>
+            <p className="mt-3 text-lg ">{formatReportMonth(report.month)}</p>
 
             {(client?.website || client?.email) && (
               <div className="mt-4 space-y-1 text-sm">
@@ -449,9 +456,7 @@ export default async function PrintReportPage({
       </section>
 
       <section className="print-section mt-10">
-        <h2 className="text-xl font-semibold">
-          Performance Overview
-        </h2>
+        <h2 className="text-xl font-semibold">Performance Overview</h2>
 
         <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
           {kpis.map((item) => (
@@ -480,7 +485,7 @@ export default async function PrintReportPage({
                 <span
                   className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${healthStyles.badge}`}
                 >
-                  {healthScore.label}
+                  Progress
                 </span>
                 <p className="text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-50 print:text-slate-950">
                   {healthScore.score}/100
@@ -488,16 +493,16 @@ export default async function PrintReportPage({
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ring-1 ring-inset ring-slate-200 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-700 print:bg-white/80 print:text-slate-700 print:ring-slate-200">
-                  Grade {healthScore.grade}
+                  {healthScore.grade}
                 </span>
                 <span className="inline-flex rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-700 ring-1 ring-inset ring-slate-200 dark:bg-slate-900/80 dark:text-slate-200 dark:ring-slate-700 print:bg-white/80 print:text-slate-700 print:ring-slate-200">
                   {healthScore.mode} Mode
                 </span>
               </div>
               <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300 print:text-slate-600">
-                Setup {healthScore.setupScore}/90 · Performance{" "}
+                Readiness {healthScore.setupScore}/70 · Results{" "}
                 {healthScore.performanceAdjustment >= 0 ? "+" : ""}
-                {healthScore.performanceAdjustment}/10
+                {healthScore.performanceAdjustment}/29
               </p>
             </div>
 
@@ -526,9 +531,9 @@ export default async function PrintReportPage({
               </h3>
             </div>
             <p className="text-xs leading-5 text-slate-500">
-              Setup {healthScore.setupScore}/90 · Performance{" "}
+              Readiness {healthScore.setupScore}/70 · Results{" "}
               {healthScore.performanceAdjustment >= 0 ? "+" : ""}
-              {healthScore.performanceAdjustment}/10
+              {healthScore.performanceAdjustment}/29
             </p>
           </div>
 
@@ -568,7 +573,7 @@ export default async function PrintReportPage({
         <h2 className="text-xl font-semibold">Notes</h2>
         <div className="mt-4 rounded-lg border border-slate-200 p-5 dark:border-slate-800 dark:bg-slate-950/60 print:border-slate-200 print:bg-white">
           <p className="whitespace-pre-line text-sm leading-relaxed ">
-            {report.notes || "No notes provided."}
+            {removeConnectionProof(report.notes) || "No notes provided."}
           </p>
         </div>
       </section>
@@ -585,7 +590,7 @@ export default async function PrintReportPage({
 
         <div className="mt-4 space-y-5">
           {summarySections.length > 0 ? (
-            summarySections.map((section, index) => (
+            summarySections.map((section, index) =>
               (() => {
                 const { bullets, remainder } = extractBulletItems(
                   section.content || "",
@@ -640,7 +645,7 @@ export default async function PrintReportPage({
                       <ReportMarkdown
                         markdown={remainder}
                         className="prose prose-slate mt-4 max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
-                        />
+                      />
                     )}
 
                     {!showBulletPanel && !remainder && (
@@ -650,21 +655,49 @@ export default async function PrintReportPage({
                     )}
                   </div>
                 );
-              })()
-            ))
+              })(),
+            )
           ) : (
             <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 print:border-slate-200 print:bg-white">
               <ReportMarkdown
                 markdown={summaryMarkdown}
                 className="prose prose-slate max-w-none prose-headings:mt-5 prose-headings:mb-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-li:leading-relaxed prose-ul:my-3 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-slate-50 dark:prose-strong:text-slate-50 print:prose-slate print:prose-headings:text-slate-900 print:prose-strong:text-slate-900"
-                />
+              />
             </div>
           )}
         </div>
       </section>
 
       <section className="print-section mt-10">
-        <ServiceCta variant="contactPage" clientName={client?.name} />
+        <h2 className="text-xl font-semibold">Your next steps</h2>
+        <p className="mt-2 text-xs">
+          Scoring rules launch-v1 use current saved setup and the measurements
+          in this report. Previously saved AI commentary may refer to earlier
+          grading rules; it is not regenerated automatically.
+        </p>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {getNextMilestones(getMilestoneAssessment(report, client)).map(
+            (m) => (
+              <article key={m.id} className="rounded-lg border p-4">
+                <h3 className="font-semibold">{m.title}</h3>
+                <p className="mt-2 text-sm">{m.description}</p>
+                <p className="mt-3 text-sm">
+                  <a href={`/guides/${m.guideSlug}`} className="underline">
+                    Show me how
+                  </a>
+                </p>
+                <p className="mt-2 text-sm">
+                  <a
+                    href={milestoneHelpHref(m.title, client?.name)}
+                    className="underline"
+                  >
+                    Get help from George
+                  </a>
+                </p>
+              </article>
+            ),
+          )}
+        </div>
       </section>
 
       <footer className="print-section mt-12 border-t border-slate-200 pt-4 text-xs">

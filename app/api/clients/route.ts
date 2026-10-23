@@ -1,4 +1,5 @@
 import { appData } from "@/lib/data-store";
+import { removeConnectionProof } from "@/lib/connection-proof";
 import { getBillingSnapshot } from "@/lib/billing";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 
@@ -9,7 +10,9 @@ function getMissingColumnName(message: string | undefined) {
   return match?.[1] ?? null;
 }
 
-async function insertClientWithSchemaFallback(payload: Record<string, unknown>) {
+async function insertClientWithSchemaFallback(
+  payload: Record<string, unknown>,
+) {
   const insertPayload = { ...payload };
   const optionalColumns = new Set([
     "logo_url",
@@ -44,10 +47,7 @@ async function insertClientWithSchemaFallback(payload: Record<string, unknown>) 
 }
 
 export async function GET(req: Request) {
-  const {
-    user,
-    error: userError,
-  } = await getRequestUser(req);
+  const { user, error: userError } = await getRequestUser(req);
 
   if (userError || !user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -72,10 +72,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const {
-    user,
-    error: userError,
-  } = await getRequestUser(req);
+  const { user, error: userError } = await getRequestUser(req);
 
   if (userError || !user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -165,7 +162,7 @@ export async function POST(req: Request) {
       design_concerns,
       ad_channel_notes,
       offer_message_concerns,
-      tracking_notes,
+      tracking_notes: removeConnectionProof(tracking_notes),
       marketing_channels,
       running_ads,
       client_notes,
