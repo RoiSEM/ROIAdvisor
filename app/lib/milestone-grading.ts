@@ -91,7 +91,7 @@ function cleanProfile(value: unknown): ReadinessProfile {
     result: ReadinessProfile = {};
   if (text(p.inquiryProcess) && p.inquiryProcess.length <= 500)
     result.inquiryProcess = p.inquiryProcess.trim();
-  if (positive(p.targetEventRate) && p.targetEventRate <= 100)
+  if (typeof p.targetEventRate === "number" && p.targetEventRate <= 100)
     result.targetEventRate = p.targetEventRate;
   const t = p.trackingTest as Record<string, unknown> | undefined;
   if (
@@ -236,42 +236,42 @@ export function getMilestoneAssessment(
     profile.trackingTest &&
     day(profile.trackingTest.date)! <= end!,
   );
-  // Launch policy, NOT statistical significance or an industry benchmark.
-  const eligible =
-    readinessScore === 70 &&
+  const hasSample = Boolean(
+    connected &&
     validMetrics &&
     validPeriod &&
-    checkBeforeEnd &&
     traffic >= 100 &&
-    conversions >= 5;
+    conversions >= 5 &&
+    client?.conversion_tracking_status !== "No",
+  );
   if (connected)
     warnings.push(
-      "Results points require completed readiness, a dated report, at least 100 sessions and 5 recorded events. This launch policy is not a guarantee of statistical confidence.",
+      "Results points reflect observed conversion activity and scale with traffic, conversion rate, and goal progress.",
     );
-  const current = validPeriod ? new Date(start!) : null;
-  const monthEnd = current
-    ? Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 0)
-    : null;
-  const wholeMonth = Boolean(
-    current && current.getUTCDate() === 1 && end === monthEnd,
-  );
-  const activity = eligible ? 5 : 0;
+  const activity = hasSample ? 5 : 0;
   const goalPoints =
-    eligible && wholeMonth && goal
-      ? Math.min(8, Math.floor((8 * conversions) / client!.monthly_goal!))
+    hasSample && goal
+      ? Math.min(8, Math.max(1, Math.floor((8 * conversions) / client!.monthly_goal!)))
       : 0;
-  const ratio =
-    eligible &&
-    conversions <= traffic &&
-    positive(profile.targetEventRate) &&
-    (conversions / traffic) * 100 >= profile.targetEventRate
-      ? 8
-      : 0;
+  let ratio = 0;
+  if (hasSample && conversions <= traffic) {
+    const rate = (conversions / traffic) * 100;
+    if (profile.targetEventRate !== undefined && profile.targetEventRate !== null) {
+      if (positive(profile.targetEventRate) && rate >= profile.targetEventRate) {
+        ratio = 8;
+      }
+    } else {
+      if (rate >= 5.0) ratio = 8;
+      else if (rate >= 2.5) ratio = 6;
+      else if (rate >= 1.0) ratio = 4;
+      else if (rate > 0) ratio = 2;
+    }
+  }
   const comp = profile.comparison;
   const compStart = day(comp?.startDate),
     compEnd = day(comp?.endDate);
   const comparable = Boolean(
-    eligible &&
+    hasSample &&
     comp &&
     compStart !== null &&
     compEnd !== null &&
@@ -416,32 +416,34 @@ export function getMilestoneAssessment(
     activity,
     "results",
     activity
-      ? "Saved metrics meet the launch sample policy; events are not automatically unique customers."
-      : "Await dependable activity and the launch sample gate; zero events does not prove zero inquiries.",
+      ? `Recorded ${conversions} events across ${traffic} sessions meets the sample baseline.`
+      : "Requires at least 100 sessions and 5 recorded events.",
     "establish-baseline",
   );
   add(
     "goal-progress",
     "Make progress toward your goal",
-    "Compare actual recorded events with your goal for a complete calendar month.",
+    "Compare actual recorded events with your monthly target.",
     8,
     goalPoints,
     "results",
-    wholeMonth
-      ? `${goalPoints}/8 points from recorded goal progress; this is not confirmed customer growth.`
-      : "Report dates do not cover a complete calendar month; monthly comparison is not graded.",
+    goalPoints > 0
+      ? `${goalPoints}/8 points from recorded progress toward your monthly goal of ${client!.monthly_goal}.`
+      : "Set a monthly conversion goal to track and earn progress points.",
     "review-goal",
   );
   add(
     "event-ratio",
     "Evaluate your event ratio",
-    "Compare recorded events per session with your own stated target.",
+    "Measure recorded conversion rate efficiency.",
     8,
     ratio,
     "results",
-    ratio
-      ? "The recorded event ratio meets the owner's target, not an industry standard or unique-lead probability."
-      : "A positive owner target, dependable sample and compatible event/session counts are needed.",
+    ratio > 0
+      ? profile.targetEventRate
+        ? `Conversion rate of ${((conversions / traffic) * 100).toFixed(1)}% meets your ${profile.targetEventRate}% target.`
+        : `Conversion rate of ${((conversions / traffic) * 100).toFixed(1)}% demonstrates active funnel efficiency (${ratio}/8 points).`
+      : "A positive conversion rate and sample of sessions are needed.",
     "evaluate-event-rate",
   );
   add(

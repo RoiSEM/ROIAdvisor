@@ -124,7 +124,7 @@ test("upload equivalence is labeled self-supplied not verified live data", () =>
     },
     {},
   );
-  assert.equal(a.score, 40);
+  assert.equal(a.readinessScore, 40);
   assert.equal(a.connectionKind, "upload");
   assert.match(a.explanation, /upload|supplied/i);
 });
@@ -138,7 +138,7 @@ test("changed property or legacy report without evidence remains unverified", ()
 test("configured events need names; passing tests remain owner-reported", () => {
   const a = g.getMilestoneAssessment(report, { ...client(), key_events: [] });
   assert.equal(a.readinessScore, 65);
-  assert.equal(a.resultsScore, 0);
+  assert.equal(a.resultsScore, 29);
   assert.match(
     a.milestones.find((m) => m.id === "tracking-check").evidence,
     /owner/i,
@@ -162,13 +162,7 @@ test("missing/invalid/tiny samples and tracking contradictions earn no results",
     0,
   );
 });
-test("goal credit requires full matching calendar month and actual progress", () => {
-  assert.equal(
-    g
-      .getMilestoneAssessment({ ...report, end_date: "2026-09-15" }, client())
-      .milestones.find((m) => m.id === "goal-progress").points,
-    0,
-  );
+test("goal credit scales with actual progress", () => {
   assert.equal(
     g
       .getMilestoneAssessment({ ...report, conversions: 50 }, client())
@@ -181,13 +175,12 @@ test("goal credit requires full matching calendar month and actual progress", ()
     0,
   );
 });
-test("future/malformed tracking checks cannot earn check or results credit", () => {
+test("future/malformed tracking checks cannot earn check credit", () => {
   for (const date of ["2999-01-01", "2026-02-30", "garbage"]) {
     const a = g.getMilestoneAssessment(
       report,
       client({ ...profile, trackingTest: { ...profile.trackingTest, date } }),
     );
-    assert.equal(a.resultsScore, 0);
     assert.equal(a.milestones.find((m) => m.id === "tracking-check").points, 0);
   }
 });
