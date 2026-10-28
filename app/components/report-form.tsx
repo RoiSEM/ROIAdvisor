@@ -4,6 +4,7 @@ import { ReportDatePicker } from "@/components/calendar";
 import ServiceCta from "@/components/service-cta";
 import { parseAnalyticsCsv, MAX_CSV_BYTES, type UploadedAnalytics } from "@/lib/analytics-csv";
 import { hasValidReportMetrics } from "@/lib/report-metrics";
+import { planDisplayName } from "@/lib/pricing";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -43,15 +44,7 @@ function percentToInput(value: number | null) {
 }
 
 function formatPlanLabel(plan: AccountPlan) {
-  if (plan === "free") {
-    return "Free";
-  }
-
-  if (plan === "starter") {
-    return "Starter";
-  }
-
-  return plan.toUpperCase();
+  return planDisplayName(plan);
 }
 
 export default function ReportForm({ clientId }: { clientId: string }) {

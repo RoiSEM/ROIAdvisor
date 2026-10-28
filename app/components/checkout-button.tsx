@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type CheckoutButtonProps = {
-  plan: "starter" | "pro";
+  plan: "pro" | "agency";
   label: string;
   featured?: boolean;
   className?: string;

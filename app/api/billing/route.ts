@@ -10,6 +10,7 @@ export async function GET() {
 
   if (userError || !user) {
     return Response.json({
+      authenticated: false,
       plan: "free",
       raw_plan: null,
       status: "inactive",
@@ -32,6 +33,7 @@ export async function GET() {
   const billing = getBillingSnapshot(data);
 
   return Response.json({
+    authenticated: true,
     plan: billing.effectivePlan,
     raw_plan: billing.rawPlan,
     status: billing.status,

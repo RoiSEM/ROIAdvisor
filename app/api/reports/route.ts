@@ -102,7 +102,7 @@ function resolveAllowedDateRange({
   }
 
   if (!requestedStartDate || !requestedEndDate) {
-    throw new Error("Start date and end date are required for Pro reports.");
+    throw new Error("Start date and end date are required for Business reports.");
   }
 
   if (!isValidDate(requestedStartDate) || !isValidDate(requestedEndDate)) {
@@ -255,7 +255,7 @@ export async function POST(req: Request) {
       if (allowance.remaining === 0) {
         return Response.json(
           {
-            error: `This website has used its ${allowance.limit} reports for this calendar month. Upgrade to Pro for unlimited reports.`,
+            error: `This website has used its ${allowance.limit} reports for this calendar month. Upgrade to Business for unlimited reports.`,
           },
           { status: 403 },
         );
@@ -339,8 +339,8 @@ export async function POST(req: Request) {
       const systemNote = billingSnapshot.canUseCustomDateRange
         ? "Custom date range applied successfully."
         : planTier === "starter"
-          ? "Starter range applied automatically. Upgrade to Pro for custom dates."
-          : "Free range applied automatically. Choose Starter or upgrade for custom dates.";
+          ? "Starter range applied automatically. Upgrade to Business for custom dates."
+          : "Free range applied automatically. Choose Business or upgrade for custom dates.";
       const uploadNote = uploadedAnalytics
         ? "Analytics metrics were imported from an uploaded CSV."
         : "";
@@ -400,7 +400,7 @@ export async function POST(req: Request) {
       return Response.json(
         {
           message: billingSnapshot.canUseCustomDateRange
-            ? `${planTier === "agency" ? "Agency" : "Pro"} report generated successfully.`
+            ? `${planTier === "agency" ? "Agency" : "Business"} report generated successfully.`
             : planTier === "starter"
               ? "Starter report generated successfully with the last 30 days applied."
               : "Free report generated successfully with the last 30 days applied.",

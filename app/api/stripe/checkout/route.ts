@@ -1,33 +1,24 @@
 import { appData } from "@/lib/data-store";
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
-import { getBillingSnapshot } from "@/lib/billing";
-import { getRequestUser } from "@/lib/supabase-server";
+import {
+  getStripeClient,
+  CHECKOUT_PRICE_MAP,
+  validateCheckoutPrice,
+} from "@/lib/stripe-pricing";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-03-25.dahlia",
-});
-
-const PRICE_MAP = {
-  starter: process.env.STRIPE_PRICE_STARTER || process.env.STRIPE_PRICE_TRIAL!,
-  pro: process.env.STRIPE_PRICE_PRO!,
-};
-
-function resolveAppUrl(pathname: string | undefined, fallbackPath: string) {
+function resolveAppUrl(pathname: unknown, fallbackPath: string) {
   const path =
-    pathname && pathname.startsWith("/") ? pathname : fallbackPath;
+    typeof pathname === "string" &&
+    pathname.startsWith("/") &&
+    !pathname.startsWith("//") &&
+    !pathname.includes("://")
+      ? pathname
+      : fallbackPath;
 
   return `${process.env.NEXT_PUBLIC_SITE_URL}${path}`;
 }
 
 export async function POST(req: Request) {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return NextResponse.json(
-      { error: "Missing STRIPE_SECRET_KEY" },
-      { status: 500 },
-    );
-  }
-
   if (!process.env.NEXT_PUBLIC_SITE_URL) {
     return NextResponse.json(
       { error: "Missing NEXT_PUBLIC_SITE_URL" },
@@ -35,24 +26,44 @@ export async function POST(req: Request) {
     );
   }
 
+  let requestBody: Record<string, unknown> | null;
   try {
-    const { plan, success_path, cancel_path } = await req.json();
+    requestBody = await req.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request body" },
+      { status: 400 },
+    );
+  }
 
-    const priceId = PRICE_MAP[plan as keyof typeof PRICE_MAP];
+  // Lazy import / auth check
+  const { getRequestUser } = await import("@/lib/supabase-server");
+  const {
+    user,
+    error: userError,
+  } = await getRequestUser(req);
 
-    if (!priceId) {
+  if (userError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { plan, success_path, cancel_path } = requestBody || {};
+
+    if (plan !== "pro" && plan !== "agency") {
       return NextResponse.json(
-        { error: "Invalid plan or missing price ID" },
+        { error: "Invalid plan or starter plan is no longer available" },
         { status: 400 },
       );
     }
-    const {
-      user,
-      error: userError,
-    } = await getRequestUser(req);
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const priceId = CHECKOUT_PRICE_MAP[plan as keyof typeof CHECKOUT_PRICE_MAP];
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: "Missing price ID for plan" },
+        { status: 400 },
+      );
     }
 
     const { data: billing, error: billingError } = await appData
@@ -62,24 +73,32 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (billingError) {
-      return NextResponse.json({ error: billingError.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Service unavailable" },
+        { status: 503 },
+      );
     }
 
-    const billingSnapshot = getBillingSnapshot(billing);
+    const subscriptionStatus = (billing?.status || "").toLowerCase();
+    const hasActiveStatus = ["active", "trialing", "past_due"].includes(
+      subscriptionStatus,
+    );
+    const isSubscriptionActive =
+      Boolean(billing?.stripe_subscription_id) && hasActiveStatus;
 
-    if (billingSnapshot.canManageBilling && billingSnapshot.effectivePlan === plan) {
+    if (isSubscriptionActive) {
       return NextResponse.json(
-        { error: `You already have the ${plan} plan.` },
+        {
+          error:
+            "You already have an active subscription. Use the billing portal to manage or change your plan.",
+        },
         { status: 409 },
       );
     }
 
-    if (billingSnapshot.canManageBilling && billingSnapshot.effectivePlan !== "starter" && plan === "starter") {
-      return NextResponse.json(
-        { error: "Use the billing portal to change or cancel an existing paid plan." },
-        { status: 409 },
-      );
-    }
+    const stripe = getStripeClient();
+
+    await validateCheckoutPrice(stripe, priceId, plan as "pro" | "agency");
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -110,12 +129,15 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Stripe checkout error:", error);
 
-    const message =
-      error instanceof Error ? error.message : "Failed to create checkout session";
+    const isClientInput =
+      error instanceof SyntaxError ||
+      (error instanceof Error &&
+        (error.message.includes("JSON") || error.message.includes("body")));
+    const status = isClientInput ? 400 : 503;
+    const message = isClientInput
+      ? "Invalid request body"
+      : "Failed to create checkout session";
 
-    return NextResponse.json(
-      { error: message },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: message }, { status });
   }
 }

@@ -83,7 +83,7 @@ export function ReportDatePicker({
         <p className="text-sm text-gray-600 dark:text-slate-300">
           {isPro
             ? "Choose any custom date range for your report."
-            : "Trial accounts are limited to the last 30 days."}
+            : "Your plan uses the last 30 days."}
         </p>
       </div>
 
@@ -128,8 +128,7 @@ export function ReportDatePicker({
       {!isPro && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
           <p>
-            Upgrade to Pro to unlock custom date ranges, historical reporting,
-            and advanced filtering.
+            Upgrade to Business or Agency to unlock custom date ranges.
           </p>
           {onUpgradeClick && (
             <button
@@ -137,7 +136,7 @@ export function ReportDatePicker({
               onClick={onUpgradeClick}
               className="mt-3 inline-flex items-center rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100"
             >
-              Upgrade to Pro
+              Compare Business and Agency
             </button>
           )}
         </div>

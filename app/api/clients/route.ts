@@ -134,8 +134,12 @@ export async function POST(req: Request) {
         if ((count ?? 0) >= websiteLimit) {
           const limitMessage =
             websiteLimit === 1
-              ? "Signed-in accounts without an active paid plan can create 1 website. Choose Starter or upgrade to add more."
-              : `Starter accounts can create up to ${websiteLimit} websites. Upgrade to Pro to add more.`;
+              ? (billingSnapshot.isBusiness
+                  ? "Business accounts can create up to 1 website. Upgrade to Agency to add more."
+                  : billingSnapshot.isStarter
+                  ? "Starter accounts can create up to 1 website."
+                  : "Signed-in accounts without an active paid plan can create 1 website. Choose Agency to add more.")
+              : `Agency accounts can create up to ${websiteLimit} websites.`;
 
           return Response.json({ error: limitMessage }, { status: 403 });
         }
@@ -173,6 +177,15 @@ export async function POST(req: Request) {
     });
 
     if (error) {
+      if (
+        error.code === "SITE_LIMIT" ||
+        (error.code === "P0001" && error.message === "SITE_QUOTA_EXCEEDED")
+      ) {
+        return Response.json(
+          { error: "This account has reached its website limit for its plan." },
+          { status: 403 },
+        );
+      }
       return Response.json({ error: error.message }, { status: 500 });
     }
 

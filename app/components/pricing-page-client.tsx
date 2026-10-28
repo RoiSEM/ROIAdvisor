@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import BillingAwarePricingCards from "@/components/billing-aware-pricing-cards";
 import ManageBillingButton from "@/components/manage-billing-button";
 import SiteHeaderNav from "@/components/site-header-nav";
+import { isSignedIn, planDisplayName } from "@/lib/pricing";
 
 type AccountPlan = "free" | "starter" | "pro" | "agency";
 type BillingPlan = "starter" | "pro" | "agency";
@@ -17,6 +18,7 @@ type BillingResponse = {
   can_use_custom_date_range: boolean;
   has_unlimited_reports: boolean;
   can_manage_billing: boolean;
+  authenticated: boolean;
 };
 
 const DEFAULT_BILLING: BillingResponse = {
@@ -26,6 +28,7 @@ const DEFAULT_BILLING: BillingResponse = {
   can_use_custom_date_range: false,
   has_unlimited_reports: false,
   can_manage_billing: false,
+  authenticated: false,
 };
 
 function formatStatus(status: string) {
@@ -33,15 +36,7 @@ function formatStatus(status: string) {
 }
 
 function formatPlanLabel(plan: AccountPlan) {
-  if (plan === "free") {
-    return "Free";
-  }
-
-  if (plan === "starter") {
-    return "Starter";
-  }
-
-  return plan;
+  return planDisplayName(plan);
 }
 
 export default function PricingPageClient() {
@@ -69,6 +64,7 @@ export default function PricingPageClient() {
       can_use_custom_date_range: Boolean(data.can_use_custom_date_range),
       has_unlimited_reports: Boolean(data.has_unlimited_reports),
       can_manage_billing: Boolean(data.can_manage_billing),
+      authenticated: data.authenticated === true,
     };
 
     setBilling(nextBilling);
@@ -174,6 +170,8 @@ export default function PricingPageClient() {
     return null;
   }, [billing.can_use_custom_date_range, checkoutState, unlocking]);
 
+  const signedIn = isSignedIn(billing);
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_45%,_#ffffff_78%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,_#111827,_#0b0f19_55%,_#0b0f19_78%)] dark:text-slate-50">
       <SiteHeaderNav current="pricing">
@@ -220,18 +218,34 @@ export default function PricingPageClient() {
                       : "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
                 }`}
               >
-                {loadingBilling ? "Loading" : formatPlanLabel(billing.plan)}
+                {loadingBilling
+                  ? "Loading"
+                  : signedIn
+                    ? formatPlanLabel(billing.plan)
+                    : "Not signed in"}
               </span>
-              <span className="text-sm text-slate-500 dark:text-slate-400">
-                Status: {loadingBilling ? "loading" : formatStatus(billing.status)}
-              </span>
+              {loadingBilling || signedIn ? (
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  Status: {loadingBilling ? "loading" : formatStatus(billing.status)}
+                </span>
+              ) : (
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  <Link
+                    href="/login"
+                    className="font-semibold text-slate-900 underline underline-offset-4 dark:text-slate-100"
+                  >
+                    Sign in
+                  </Link>{" "}
+                  to see your current plan.
+                </span>
+              )}
             </div>
             <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
               {billing.can_use_custom_date_range
-                ? "Paid features are unlocked, including custom date ranges and unlimited report generation."
+                ? `${planDisplayName(billing.plan)} is active: custom date ranges and unlimited reports for normal interactive use.`
                 : billing.plan === "starter"
-                  ? "You are on the Starter plan with up to 10 websites, the last 30 days, and limited report generation."
-                  : "You are signed in with free access. You can set up one website and use the default 30-day report window until you choose Starter or upgrade."}
+                  ? "You are on a legacy Starter plan. Manage it in the billing portal, or compare Business and Agency below."
+                  : "Free includes 1 website, 3 successfully generated reports per UTC calendar month, and the default last 30 days range. Choose Business or Agency for unlimited reports and custom date ranges."}
             </p>
           </div>
 
@@ -241,7 +255,7 @@ export default function PricingPageClient() {
             </p>
             <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
               <li>Stripe completes the payment securely.</li>
-              <li>The webhook updates `billing_accounts` in your database.</li>
+              <li>Your plan updates automatically after payment.</li>
               <li>Your paid features unlock as soon as the billing record syncs.</li>
             </ul>
             <div className="mt-5 flex flex-wrap gap-3">

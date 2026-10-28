@@ -12,8 +12,10 @@ export type BillingRecord = {
 };
 
 const ACTIVE_ACCESS_STATUSES = new Set(["active", "trialing", "past_due"]);
-const STARTER_WEBSITE_LIMIT = 10;
 const FREE_WEBSITE_LIMIT = 1;
+const BUSINESS_WEBSITE_LIMIT = 1;
+const AGENCY_WEBSITE_LIMIT = 10;
+const STARTER_WEBSITE_LIMIT = 1;
 
 export function normalizeBillingPlan(
   plan: string | null | undefined,
@@ -52,27 +54,35 @@ export function hasPaidAccess(status: string | null | undefined) {
 }
 
 export function getWebsiteOwnershipLimit(record?: BillingRecord | null) {
-  const rawPlan = normalizeBillingPlan(record?.plan);
+  const storedPlan = parseBillingPlan(record?.plan);
   const status = normalizeBillingStatus(record?.status);
   const active = hasPaidAccess(status);
 
-  if (!active) {
+  if (!active || !storedPlan) {
     return FREE_WEBSITE_LIMIT;
   }
 
-  if (rawPlan === "starter") {
+  if (storedPlan === "agency") {
+    return AGENCY_WEBSITE_LIMIT;
+  }
+
+  if (storedPlan === "pro") {
+    return BUSINESS_WEBSITE_LIMIT;
+  }
+
+  if (storedPlan === "starter") {
     return STARTER_WEBSITE_LIMIT;
   }
 
-  return null;
+  return FREE_WEBSITE_LIMIT;
 }
 
 export function getBillingSnapshot(record?: BillingRecord | null) {
   const storedPlan = parseBillingPlan(record?.plan);
   const status = normalizeBillingStatus(record?.status);
   const active = hasPaidAccess(status);
-  const rawPlan = storedPlan ?? "starter";
-  const effectivePlan: AccountPlan = active ? rawPlan : "free";
+  const validPlan = active && storedPlan !== null;
+  const effectivePlan: AccountPlan = validPlan ? storedPlan : "free";
 
   return {
     rawPlan: storedPlan,
@@ -80,11 +90,13 @@ export function getBillingSnapshot(record?: BillingRecord | null) {
     effectivePlan,
     isFree: effectivePlan === "free",
     isStarter: effectivePlan === "starter",
-    hasActiveAccess: active,
+    isBusiness: effectivePlan === "pro",
+    isAgency: effectivePlan === "agency",
+    hasActiveAccess: validPlan,
     canUseCustomDateRange:
-      effectivePlan === "pro" || effectivePlan === "agency",
+      validPlan && (effectivePlan === "pro" || effectivePlan === "agency"),
     hasUnlimitedReports:
-      effectivePlan === "pro" || effectivePlan === "agency",
+      validPlan && (effectivePlan === "pro" || effectivePlan === "agency"),
     websiteOwnershipLimit: getWebsiteOwnershipLimit(record),
     canManageBilling: Boolean(
       record?.stripe_customer_id || record?.stripe_subscription_id,

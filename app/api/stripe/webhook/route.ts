@@ -2,27 +2,14 @@ import { appData } from "@/lib/data-store";
 import Stripe from "stripe";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-
+import { getStripeClient, getPlanFromPriceId } from "@/lib/stripe-pricing";
 
 export const runtime = "nodejs";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-03-25.dahlia",
-});
-
-function getPlanFromPriceId(priceId: string | null | undefined) {
-  if (!priceId) return null;
-
-  if (
-    priceId === process.env.STRIPE_PRICE_STARTER ||
-    priceId === process.env.STRIPE_PRICE_TRIAL
-  ) {
-    return "starter";
-  }
-  if (priceId === process.env.STRIPE_PRICE_PRO) return "pro";
-  if (priceId === process.env.STRIPE_PRICE_AGENCY) return "agency";
-
-  return null;
+function getDataBackend(): "supabase" | "postgres" {
+  const backend = process.env.DATA_BACKEND ?? "supabase";
+  if (backend !== "supabase" && backend !== "postgres") throw new Error("Unsupported DATA_BACKEND");
+  return backend;
 }
 
 async function upsertBillingAccount(params: {
@@ -95,7 +82,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (getDataBackend() === "supabase" && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json(
         { error: "Missing SUPABASE_SERVICE_ROLE_KEY" },
         { status: 500 },
@@ -112,6 +99,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.text();
+    const stripe = getStripeClient();
 
     const event = stripe.webhooks.constructEvent(
       body,
@@ -154,11 +142,8 @@ export async function POST(req: Request) {
         if (subscriptionId) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const priceId = subscription.items.data[0]?.price?.id || null;
-          const plan =
-            getPlanFromPriceId(priceId) ??
-            (typeof session.metadata?.selected_plan === "string"
-              ? session.metadata.selected_plan
-              : null);
+          // Security requirement: unknown price does NOT grant from arbitrary selected_plan metadata
+          const plan = getPlanFromPriceId(priceId);
 
           await upsertBillingAccount({
             userId,

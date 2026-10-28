@@ -4,6 +4,7 @@ import ServiceCta from "@/components/service-cta";
 import SiteHeaderNav from "@/components/site-header-nav";
 import SignOutButton from "@/components/sign-out-button";
 import { getBillingSnapshot } from "@/lib/billing";
+import { getSiteAccess } from "@/lib/pricing";
 import { getRequestUser, isAdminUser } from "@/lib/supabase-server";
 import Link from "next/link";
 import {
@@ -62,9 +63,7 @@ async function getClients() {
     ? "admin"
     : !billingSnapshot.hasActiveAccess
       ? "free"
-      : billingSnapshot.effectivePlan === "starter"
-        ? "starter"
-        : "paid";
+      : billingSnapshot.effectivePlan;
 
   return {
     clients: data ?? [],
@@ -88,16 +87,17 @@ export default async function ClientsPage() {
     accountState,
   } = await getClients();
 
+  const siteAccess =
+    isAdmin || websiteLimit === null
+      ? null
+      : getSiteAccess({ plan: accountState, websiteLimit, sitesUsed });
   const siteLimitMessage = isAdmin
     ? "Admins can create and manage websites across accounts."
-    : websiteLimit === null
-      ? "Your current plan includes unlimited websites."
-      : accountState === "free"
-        ? `You can create ${websiteLimit} website before choosing Starter or upgrading.`
-        : `Your Starter plan includes up to ${websiteLimit} websites before you need to upgrade.`;
+    : siteAccess
+      ? siteAccess.message
+      : "Website access follows your current plan.";
 
-  const limitCtaLabel =
-    accountState === "free" ? "Choose Starter for more sites" : "Upgrade to Pro";
+  const limitCta = siteAccess?.cta ?? null;
   const sectionLabel = isAdmin ? "Clients" : "Dashboard";
   const pageTitle = isAdmin
     ? "Manage client websites and approvals."
@@ -153,21 +153,19 @@ export default async function ClientsPage() {
                   Website access
                 </p>
                 <p className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">
-                  {websiteLimit === null
-                    ? "Unlimited websites available"
-                    : `${sitesUsed} of ${websiteLimit} websites used`}
+                  {siteAccess ? siteAccess.headline : `${sitesUsed} websites used`}
                 </p>
                 <p className="mt-1 text-sm leading-7 text-slate-600 dark:text-slate-300">
                   {siteLimitMessage}
                 </p>
               </div>
 
-              {!canCreateSite && (
+              {!canCreateSite && limitCta && (
                 <Link
-                  href="/pricing"
+                  href={limitCta.href}
                   className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 dark:bg-emerald-500 dark:text-emerald-950"
                 >
-                  {limitCtaLabel}
+                  {limitCta.label}
                 </Link>
               )}
             </div>
@@ -206,16 +204,17 @@ export default async function ClientsPage() {
               You have reached your current website limit.
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-amber-900 dark:text-amber-100">
-              {siteLimitMessage} Upgrade your account or choose Starter to add
-              more websites while keeping your existing setup intact.
+              {siteAccess?.limitNotice ?? siteLimitMessage}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/pricing"
-                className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 dark:bg-emerald-500 dark:text-emerald-950"
-              >
-                {limitCtaLabel}
-              </Link>
+              {limitCta && (
+                <Link
+                  href={limitCta.href}
+                  className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 dark:bg-emerald-500 dark:text-emerald-950"
+                >
+                  {limitCta.label}
+                </Link>
+              )}
               <Link
                 href="/"
                 className="inline-flex items-center justify-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-100"
@@ -501,7 +500,9 @@ export default async function ClientsPage() {
             ),
           )}
 
-          {clients.length === 1 && (
+          {clients.length === 1 &&
+            !isAdmin &&
+            accountState !== "agency" && (
             <div className="grid gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur md:grid-cols-[1.25fr_0.75fr] dark:border-slate-800 dark:bg-slate-900/80">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -511,22 +512,22 @@ export default async function ClientsPage() {
                   <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                     <Globe className="h-5 w-5 text-slate-900 dark:text-slate-100" />
                     <h2 className="mt-4 text-lg font-semibold">
-                      Unlimited Sites
+                      Up to 10 websites on Agency
                     </h2>
                     <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                      Start with the business name, website URL, and the basic
-                      context needed to analyze lead flow.
+                      Agency lets one account manage up to 10 websites. Free
+                      and Business include 1 website.
                     </p>
                   </div>
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                     <BarChart3 className="h-5 w-5 text-slate-900 dark:text-slate-100" />
                     <h2 className="mt-4 text-lg font-semibold">
-                      Unlimited Reports
+                      Unlimited reports on paid plans
                     </h2>
                     <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                      Link Google Analytics for cleaner traffic and conversion
-                      data, or add data later while you finish setup.
+                      Business and Agency include unlimited reports for normal
+                      interactive use. Free includes 3 reports per month.
                     </p>
                   </div>
 
@@ -536,8 +537,8 @@ export default async function ClientsPage() {
                       Date ranges
                     </h2>
                     <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                      Run a report to surface conversion blockers, performance
-                      gaps, and the most important next actions.
+                      Business and Agency let you choose any custom date range
+                      for a report. Free reports use the last 30 days.
                     </p>
                   </div>
                 </div>
@@ -572,7 +573,7 @@ export default async function ClientsPage() {
                     href="/pricing"
                     className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 dark:bg-emerald-500 dark:text-emerald-950"
                   >
-                    Upgrade to Pro
+                    Compare plans
                   </Link>
                   <Link
                     href="/"

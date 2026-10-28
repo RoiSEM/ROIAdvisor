@@ -188,6 +188,15 @@ export async function PATCH(
     });
 
     if (error) {
+      if (
+        error.code === "SITE_LIMIT" ||
+        (error.code === "P0001" && error.message === "SITE_QUOTA_EXCEEDED")
+      ) {
+        return Response.json(
+          { error: "This account has reached its website limit for its plan." },
+          { status: 403 },
+        );
+      }
       return Response.json({ error: error.message }, { status: 500 });
     }
 

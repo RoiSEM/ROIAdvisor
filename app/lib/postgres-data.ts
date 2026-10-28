@@ -82,6 +82,9 @@ function safeError(error: unknown): Failure {
   if (quotaFailure?.code === "P0001" && quotaFailure.message === "REPORT_QUOTA_EXCEEDED") {
     return { code: "REPORT_LIMIT", message: "Report limit reached for this calendar month." };
   }
+  if (quotaFailure?.code === "P0001" && quotaFailure.message === "SITE_QUOTA_EXCEEDED") {
+    return { code: "SITE_LIMIT", message: "Website limit reached for this account plan." };
+  }
   const failure = error as { code?: string; message?: string };
   const column = failure.code === "42703" ? failure.message?.match(/column (?:\w+\.)?"?(\w+)"?(?: of relation "\w+")? does not exist/)?.[1] : null;
   if (column && Object.values(COLUMNS).some((columns) => columns.includes(column))) {
